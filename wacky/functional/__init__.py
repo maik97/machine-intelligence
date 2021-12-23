@@ -1,0 +1,1 @@
+from wacky.functional.base import WackyBase
