@@ -3,32 +3,50 @@ import numpy as np
 import wacky.functional as funky
 
 
+def n_step_returns(rewards, gamma, eps):
+    R = 0
+    returns = []
+    for r in rewards[::-1]:
+        R = r + self.gamma * R
+        returns.insert(0, R)
+
+    returns = th.tensor(returns)
+    returns = (returns - returns.mean()) / (returns.std() + self.eps)
+    return returns
+
 class NStepReturns(funky.WackyBase):
 
-    def __init__(self, gamma=0.99):
+    def __init__(self, gamma=0.99, eps=None):
         super().__init__()
+        
+        if eps is None:
+            eps = np.finfo(np.float32).eps.item()
+
         self.gamma = gamma
-        self.eps = np.finfo(np.float32).eps.item()
+        self.eps = eps
 
     def call(self, memory):
-        R = 0
-        returns = []
-        for r in memory('rewards')[::-1]:
-            R = r + self.gamma * R
-            returns.insert(0, R)
-
-        returns = th.tensor(returns)
-        returns = (returns - returns.mean()) / (returns.std() + self.eps)
-        return returns
+        return n_step_returns(
+            rewards = memory('rewards'),
+            gamma = self.gamma,
+            eps = self.eps
+        )
 
 
-class Advantage(funky.WackyBase):
+def calc_advantages(returns, values):
+    advantages = []
+    for i in range(len(returns)):
+        advantages.append(returns[i] - values[i])
+    return advantages
+
+class CalcAdvantages(funky.WackyBase):
 
     def __init__(self):
         super().__init__()
 
     def call(self, memory):
-        advantages = []
-        for i in range(len(memory)):
-            advantages.append(memory('returns',i) - memory('values',i))
-        return advantages
+        return calc_advantages(
+            returns = memory('returns'),
+            values = memory('values')
+        )
+
