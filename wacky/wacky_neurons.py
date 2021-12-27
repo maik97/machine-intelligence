@@ -7,19 +7,27 @@ from torch.distributions import Categorical
 import time
 
 import numpy as np
+import wacky.functional as funky
 
 
 class WackyNeuron(nn.Module):
-    def __init__(self, n_inputs, n_outputs, optimizer=None):
+    def __init__(self, n_inputs, n_outputs, optimizer=None, policy_loss=None, value_loss=None):
         super().__init__()
 
         if optimizer is None:
             optimizer = optim.Adam(self.parameters())
 
+        if policy_loss is None:
+            policy_loss = funky.AdvantageActorCritic()
+
+        if value_loss is None:
+            value_loss = funky.ValueL1SmoothLoss()
+
         self.linear = nn.Linear(n_inputs, n_outputs)
         self.confidence = nn.Linear(n_inputs, 1)
         self.optimizer = optimizer
-
+        self.policy_loss = policy_loss
+        self.value_loss = value_loss
 
 
     def forward(self, x):
