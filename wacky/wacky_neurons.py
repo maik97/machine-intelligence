@@ -11,31 +11,54 @@ import wacky.functional as funky
 
 
 class WackyNeuron(nn.Module):
-    def __init__(self, n_inputs, n_outputs, optimizer=None, policy_loss=None, value_loss=None):
+    def __init__(self, n_inputs, n_outputs, optimizer=None):
         super().__init__()
 
         if optimizer is None:
             optimizer = optim.Adam(self.parameters())
 
-        if policy_loss is None:
-            policy_loss = funky.AdvantageActorCritic()
-
-        if value_loss is None:
-            value_loss = funky.ValueL1SmoothLoss()
-
         self.linear = nn.Linear(n_inputs, n_outputs)
-        self.confidence = nn.Linear(n_inputs, 1)
-        self.optimizer = optimizer
-        self.policy_loss = policy_loss
-        self.value_loss = value_loss
+        self.state_value = nn.Linear(n_inputs + n_outputs, 1)
+        self.confidence_mu = nn.Linear(n_inputs + n_outputs + 1, 1)
+        self.confidence_sigma = nn.Linear(n_inputs + n_outputs + 1, 1)
 
+        self.optimizer = optimizer
+
+    def reset(self):
+
+        self.v_list = []
+        self.mu_list = []
+        self.sigma_list = []
 
     def forward(self, x):
-        return self.linear(x)
+        outs = F.sigmoid(self.linear(x))
 
-    def learn(self):
-        policy_losses = self.policy_loss(self.memory)
-        value_losses = self.value_loss(self.memory)
+        x = torch.flatten(torch.cat([x, outs], dim=0))
+        v = self.state_value(x)
+
+        x = torch.flatten(torch.cat([x, v], dim=0))
+        mu = F.tanh(self.confidence_mu(x))
+        sigma = F.sigmoid(self.confidence_mu(x))
+
+        self.v_list.append(v)
+        self.mu_list.append(mu)
+        self.sigma_list.append(sigma)
+
+        return outs
+
+    def learn(self, r):
+
+        v = torch.stack(self.v_list)
+        mu = torch.stack(self.mu_list)
+        sigma = torch.stack(self.sigma_list)
+
+        returns = funky.n_step_returns(rewards=r, gamma=0.9, eps=np.finfo(np.float32).eps.item())
+        advantages = funky.calc_advantages(returns=r, values=v)
+
+        log_probs = funky.calc_log_probs(mu=mu, sigma=sigma)
+
+        policy_losses = funky.adv_actor_critic_loss(log_prob=log_probs, advantage=advantages)
+        value_losses = funky.val_l1_smooth_loss(values=v, returns=returns)
 
         self.optimizer.zero_grad()
         loss = policy_losses.sum() + value_losses.sum()
@@ -43,6 +66,8 @@ class WackyNeuron(nn.Module):
         # perform backprop
         loss.backward()
         self.optimizer.step()
+
+        self.reset()
 
 
 class HiddenWackyNeuron(nn.Module):
