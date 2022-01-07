@@ -1,7 +1,7 @@
 import torch as th
 import torch.nn.functional as F
 
-import wacky.functional as funky
+from wacky import functional as funky
 
 
 def clipped_surrogate_loss(advantage, old_log_prob, log_prob, clip_range):
@@ -49,23 +49,4 @@ class AdvantageActorCritic(funky.WackyBase):
             log_prob = memory('log_probs'),
             advantage = memory('advantage')
         )
-
-
-def val_l1_smooth_loss(values, returns):
-    losses = []
-    for i in range(len(values)):
-        losses.append(F.smooth_l1_loss(values[i], returns[i]))
-    return losses
-
-class ValueL1SmoothLoss(funky.WackyBase):
-
-    def __init__(self):
-        super().__init__()
-
-    def call(self, memory):
-        return val_l1_smooth_loss(
-            values = memory('values'),
-            returns = memory('returns')
-        )
-        
 

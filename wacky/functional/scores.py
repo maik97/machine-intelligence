@@ -1,6 +1,6 @@
 import torch as th
 import numpy as np
-import wacky.functional as funky
+from wacky import functional as funky
 
 
 def n_step_returns(rewards, gamma, eps):
@@ -37,7 +37,7 @@ def calc_advantages(returns, values):
     advantages = []
     for i in range(len(returns)):
         advantages.append(returns[i] - values[i])
-    return advantages
+    return th.stack(advantages)
 
 class CalcAdvantages(funky.WackyBase):
 

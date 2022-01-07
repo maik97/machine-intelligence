@@ -1,6 +1,6 @@
-import wacky.functional as funky
+import wacky
 
-class BaseMemory(funky.WackyBase):
+class BaseMemory(wacky.functional.WackyBase):
 
 	def __init__(self, max_len):
 		super().__init__()
