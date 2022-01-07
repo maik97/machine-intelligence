@@ -2,7 +2,7 @@ import torch as th
 import torch.nn as nn
 import torch.nn.functional as F
 
-from wacky.backend.gym_space_decoder import decode_gym_space
+from wacky.functional.gym_space_decoder import decode_gym_space
 
 def append_layer(layer_list, inputs, outputs, activation, th_nn=nn.Linear):
     layer_list.append(th_nn(inputs, outputs))
