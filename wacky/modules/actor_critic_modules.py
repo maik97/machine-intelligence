@@ -35,6 +35,7 @@ class ActorCriticArchitecture(ReinforcementLearnerArchitecture):
             network: nn.Module,
             optimizer: str,
             lr: float,
+            distribution,
             returns_fn,
             advantages_fn,
             actor_loss_fn,

@@ -14,7 +14,7 @@ def decode_gym_space(space, allowed_spaces=None):
         if not spaces.Box in allowed_spaces:
             raise TypeError('spaces.Box was not allowed')
         else:
-            return space.shape[0]
+            return space.shape
 
     elif isinstance(space, spaces.Discrete):
         if not spaces.Discrete in allowed_spaces:
