@@ -58,83 +58,100 @@ class MultiLayerPerceptron(nn.Module):
             self.layer_list.append(activation)
 
 
-class ActorCriticNetworkWithShared(nn.Module):
+class ActorCriticNetwork(nn.Module):
 
-    def __init__(self, shared_net_module, actor_net_module, critic_net_module):
-        super(ActorCriticNetworkWithShared, self).__init__()
+    def __init__(self, actor_net_module, critic_net_module, shared_net_module=None):
+        super(ActorCriticNetwork, self).__init__()
 
         self.shared_net_module = shared_net_module
         self.actor_net_module = actor_net_module
         self.critic_net_module = critic_net_module
 
     def forward(self, x):
-        x = self.shared_net_module(x)
+        if self.shared_net_module is not None:
+            x = self.shared_net_module(x)
         return self.actor_net_module(x), self.critic_net_module(x)
 
 
-class ActorCriticNetworkNoShared(nn.Module):
+def make_shared_net_for_actor_critic(observation_space, shared_net, activation_shared):
+    if shared_net is None:
+        shared_net_module = None
+        in_features = decode_gym_space(observation_space, allowed_spaces=[spaces.Box])
 
-    def __init__(self, actor_net_module, critic_net_module):
-        super(ActorCriticNetworkNoShared, self).__init__()
+    elif isinstance(shared_net, list):
+        shared_net_module = MultiLayerPerceptron(
+            n_inputs=decode_gym_space(observation_space, allowed_spaces=[spaces.Box]),
+            layer_units=shared_net,
+            activation_hidden=activation_shared,
+            activation_out=activation_shared
+        )
+        in_features = shared_net_module.out_features
 
-        self.actor_net_module = actor_net_module
-        self.critic_net_module = critic_net_module
+    elif isinstance(shared_net, nn.Module):
+        shared_net_module = shared_net
+        in_features = shared_net_module.out_features
 
-    def forward(self, x):
-        return self.actor_net_module(x), self.critic_net_module(x)
+    else:
+        raise TypeError("'shared_net' type must be either [None, list, nn.Module], not", type(shared_net))
+
+    return in_features, shared_net_module
+
+
+def make_actor_net(action_space, in_features, actor_net, activation_actor):
+    if actor_net is None:
+        actor_net = [64, 64]
+
+    if isinstance(actor_net, list):
+        actor_net_module = MultiLayerPerceptron(
+            n_inputs=in_features,
+            layer_units=actor_net,
+            activation_hidden=activation_actor,
+            activation_out=activation_actor
+        )
+    elif isinstance(actor_net, nn.Module):
+        actor_net_module = actor_net
+    else:
+        raise TypeError("'actor_net' type must be either [None, list, nn.Module], not", type(actor_net))
+
+    action_layer = make_action_distribution(in_features=actor_net_module.out_features, space=action_space)
+    actor_net_module.layers.append(action_layer)
+
+    return actor_net_module
+
+
+def make_critic_net(in_features, critic_net, activation_critic):
+    if critic_net is None:
+        critic_net = [64, 64]
+
+    if isinstance(critic_net, list):
+        critic_net_module = MultiLayerPerceptron(
+            n_inputs=in_features,
+            layer_units=critic_net,
+            activation_hidden=activation_critic,
+            activation_out=activation_critic
+        )
+    elif isinstance(critic_net, nn.Module):
+        critic_net_module = critic_net
+    else:
+        raise TypeError("'critic_net' type must be either [None, list, nn.Module], not", type(critic_net))
+
+    critic_net_module.append_layer(1, activation=None)
+
+    return critic_net_module
 
 
 def actor_critic_net_arch(
         observation_space,
         action_space,
-        activation_hidden=F.relu,
+        shared_net=None,
+        actor_net=None,
+        critic_net=None,
+        activation_shared=F.relu,
         activation_actor=F.tanh,
         activation_critic=None,
-        shared_net_units=None,
-        actor_net_units=None,
-        critic_net_units=None,
 ):
-    if actor_net_units is None:
-        actor_net_units = [64, 64]
+    in_features, shared_net_module = make_shared_net_for_actor_critic(observation_space, shared_net, activation_shared)
+    actor_net_module = make_actor_net(action_space, in_features, actor_net, activation_actor)
+    critic_net_module = make_critic_net(in_features, critic_net, activation_critic)
 
-    if critic_net_units is None:
-        critic_net_units = [64, 64]
-
-    if shared_net_units is not None:
-        if not isinstance(shared_net_units, list):
-            raise TypeError("'shared_net_units' must be either type list or None, not", type(shared_net_units))
-        else:
-            shared_net_module = MultiLayerPerceptron(
-                n_inputs=decode_gym_space(observation_space, allowed_spaces=[spaces.Box]),
-                layer_units=shared_net_units,
-                activation_hidden=activation_hidden,
-                activation_out=activation_hidden
-            )
-            n_inputs = shared_net_module.out_features
-
-    else:
-        shared_net_module = None
-        n_inputs = decode_gym_space(observation_space, allowed_spaces=[spaces.Box])
-
-    actor_net_module = MultiLayerPerceptron(
-        n_inputs=n_inputs,
-        layer_units=actor_net_units,
-        activation_hidden=activation_hidden,
-        activation_out=activation_actor
-    )
-
-    critic_net_module = MultiLayerPerceptron(
-        n_inputs=n_inputs,
-        layer_units=critic_net_units,
-        activation_hidden=activation_hidden,
-        activation_out=activation_critic
-    )
-
-    action_layer = make_action_distribution(in_features=actor_net_module.out_features, space=action_space)
-    actor_net_module.layers.append(action_layer)
-    critic_net_module.append_layer(1, activation=None)
-
-    if shared_net_module is not None:
-        return ActorCriticNetworkWithShared(shared_net_module, actor_net_module, critic_net_module)
-    else:
-        return ActorCriticNetworkNoShared(actor_net_module, critic_net_module)
+    return ActorCriticNetwork(actor_net_module, critic_net_module, shared_net_module)
