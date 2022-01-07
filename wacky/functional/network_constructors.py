@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from gym import spaces
 
 from wacky.functional.gym_space_decoder import decode_gym_space
+from wacky.functional.distributions import make_action_distribution
 
 
 class MultiLayerPerceptron(nn.Module):
@@ -31,7 +32,7 @@ class MultiLayerPerceptron(nn.Module):
             self.append_layer(layer_units[-1], activation_out)
         elif isinstance(layer_units[-1], list):
             # TODO: multi output model
-            raise NotImplemented()
+            raise NotImplemented
 
     @property
     def in_features(self):
@@ -85,6 +86,7 @@ class ActorCriticNetworkNoShared(nn.Module):
 
 def actor_critic_net_arch(
         observation_space,
+        action_space,
         activation_hidden=F.relu,
         activation_actor=F.tanh,
         activation_critic=None,
@@ -127,6 +129,10 @@ def actor_critic_net_arch(
         activation_hidden=activation_hidden,
         activation_out=activation_critic
     )
+
+    action_layer = make_action_distribution(in_features=actor_net_module.out_features, space=action_space)
+    actor_net_module.layers.append(action_layer)
+    critic_net_module.append_layer(1, activation=None)
 
     if shared_net_module is not None:
         return ActorCriticNetworkWithShared(shared_net_module, actor_net_module, critic_net_module)
