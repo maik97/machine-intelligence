@@ -1,52 +1,21 @@
 import torch as th
-import numpy as np
-from wacky import functional as funky
 
 
-def n_step_returns(rewards, gamma, eps):
-    R = 0
+def monte_carlo_returns(rewards, gamma=0.99, eps=1e-07, standardize=False):
+
+    future_return = 0
     returns = []
-    for r in rewards[::-1]:
-        R = r + gamma * R
-        returns.insert(0, R)
+    for r in reversed(rewards):
+        future_return = r + gamma * future_return
+        returns.insert(0, future_return)
 
     returns = th.tensor(returns)
-    returns = (returns - returns.mean()) / (returns.std() + eps)
-    return returns
 
-class NStepReturns(funky.WackyBase):
+    if standardize:
+        returns = (returns - returns.mean()) / (returns.std() + eps)
 
-    def __init__(self, gamma=0.99, eps=None):
-        super().__init__()
-        
-        if eps is None:
-            eps = np.finfo(np.float32).eps.item()
-
-        self.gamma = gamma
-        self.eps = eps
-
-    def call(self, memory):
-        return n_step_returns(
-            rewards = memory('rewards'),
-            gamma = self.gamma,
-            eps = self.eps
-        )
+    return returns.detach()
 
 
 def calc_advantages(returns, values):
-    advantages = []
-    for i in range(len(returns)):
-        advantages.append(returns[i] - values[i])
-    return th.stack(advantages)
-
-class CalcAdvantages(funky.WackyBase):
-
-    def __init__(self):
-        super().__init__()
-
-    def call(self, memory):
-        return calc_advantages(
-            returns = memory('returns'),
-            values = memory('values')
-        )
-
+    return th.sub(returns, values)

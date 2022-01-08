@@ -7,7 +7,7 @@ from gym import spaces
 from wacky.networks.layered_networks import MultiLayerPerceptron
 from wacky.networks.actor_critic_networks import ActorCriticNetwork
 from wacky.functional.gym_space_decoder import decode_gym_space
-from wacky.functional.distributions import make_action_distribution
+from wacky.functional.distributions import make_distribution_network
 from wacky.backend.error_messages import check_type, raise_type_error
 
 
@@ -51,7 +51,7 @@ def make_actor_net(action_space, in_features, actor_net, activation_actor):
     else:
         raise_type_error(actor_net, (None, list, nn.Module), 'actor_net')
 
-    action_layer = make_action_distribution(in_features=actor_net_module.out_features, space=action_space)
+    action_layer = make_distribution_network(in_features=actor_net_module.out_features, space=action_space)
     actor_net_module.layers.append(action_layer)
 
     return actor_net_module
