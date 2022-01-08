@@ -2,31 +2,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
 
 import wacky.functional as funky
-from wacky.backend.get_optimizer import get_optim
-
-class ReinforcementLearnerArchitecture(funky.WackyBase):
-
-    def __init__(self, network, optimizer: str, lr:float, *args, **kwargs):
-        super(ReinforcementLearnerArchitecture, self).__init__()
-
-        self.network = network
-        self.optimizer = get_optim(optimizer, self.network.parameters(), lr, *args, **kwargs)
-
-    def call(self, state, mode=None):
-        pass
-
-    def reset(self):
-        pass
-
-    def reward_signal(self, r):
-        pass
-
-    def learn(self):
-        pass
-
+from  wacky.agents.base_learner import ReinforcementLearnerArchitecture
 
 class ActorCriticArchitecture(ReinforcementLearnerArchitecture):
 
@@ -35,7 +13,6 @@ class ActorCriticArchitecture(ReinforcementLearnerArchitecture):
             network: nn.Module,
             optimizer: str,
             lr: float,
-            distribution,
             returns_fn,
             advantages_fn,
             actor_loss_fn,
@@ -48,8 +25,8 @@ class ActorCriticArchitecture(ReinforcementLearnerArchitecture):
         self.actor_loss_fn = actor_loss_fn
         self.critic_loss_fn = critic_loss_fn
 
-    def call(self, state, mode=None):
-        pass
+    def call(self, state, deterministic=False):
+        return self.network(state, deterministic)
 
     def reset(self):
         pass
@@ -155,8 +132,10 @@ class ExperimentalAdvantageActorCriticModule(nn.Module):
             self.activation_out = F.tanh
 
         if optimizer is None:
-            optimizer = optim.Adam(self.parameters())
-        self.optimizer = optimizer
+            optimizer = 'adam'
+
+        if isinstance(optimizer, str):
+            self.optimizer = optimizer
 
         self.reset()
 
