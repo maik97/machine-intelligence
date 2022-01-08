@@ -4,11 +4,11 @@ from wacky import functional as funky
 from wacky import networks
 
 
-def make_action_distribution(in_features, space: spaces.Space):
+def make_distribution_network(in_features, space: spaces.Space):
 
     # space.Dict, space.Tuple
     if isinstance(space, (spaces.Tuple, spaces.Dict)):
-        return [make_action_distribution(in_features, subspace) for subspace in space]
+        return [make_distribution_network(in_features, subspace) for subspace in space]
 
     allowed_spaces = [
         spaces.Box, spaces.Discrete, spaces.MultiDiscrete, spaces.Tuple, spaces.Dict,# spaces.MultiBinary

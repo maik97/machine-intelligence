@@ -1,11 +1,8 @@
-from wacky.functional.base import WackyBase
-from wacky.functional.get_optimizer import get_optim
-
-
-from wacky.functional.losses import clipped_surrogate_loss, ClippedSurrogateLoss
-from wacky.functional.losses import adv_actor_critic_loss, AdvantageActorCritic
-
-from wacky.functional.scores import n_step_returns, NStepReturns
-from wacky.functional.scores import calc_advantages, CalcAdvantages
-
+from wacky.functional.base import *
+from wacky.functional.distributions import *
+from wacky.functional.get_optimizer import *
 from wacky.functional.gym_space_decoder import *
+from wacky.functional.losses import *
+from wacky.functional.memory import *
+from wacky.functional.network_constructors import *
+from wacky.functional.scores import *
