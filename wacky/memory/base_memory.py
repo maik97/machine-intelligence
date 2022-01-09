@@ -133,17 +133,3 @@ class MemoryDict(UserDict):
             return self.keys_len_list[0]
         else:
             return None
-
-
-test = np.load('dicom_data_analysis_all.npy')
-print(test.shape)
-last_row = np.asarray(test[-1], dtype=np.float64)
-print(last_row)
-test = np.delete(test, np.argwhere(last_row < 3.5), axis=1)
-print(test.shape)
-print(test[-1])
-
-test = np.array([], dtype=np.float64) # bringt nix
-print(np.append(test, '1')) # ['1']
-print(np.append(test, float('1'))) # [1.]
-
