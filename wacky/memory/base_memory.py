@@ -143,7 +143,7 @@ test = np.delete(test, np.argwhere(last_row < 3.5), axis=1)
 print(test.shape)
 print(test[-1])
 
-test = np.array([], dtype=np.float64)
+test = np.array([], dtype=np.float64) # bringt nix
 print(np.append(test, '1')) # ['1']
 print(np.append(test, float('1'))) # [1.]
 
