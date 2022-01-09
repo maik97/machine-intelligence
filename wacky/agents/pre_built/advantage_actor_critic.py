@@ -13,7 +13,7 @@ class AdvantageActorCritic(MonteCarloLearner):
             self,
             network,
             optimizer: str = 'Adam',
-            lr: float = 1.e-3,
+            lr: float = 0.0003,
             returns_gamma: float = 0.99,
             returns_standardize: bool = False,
             returns_standardize_eps: float = 1.e-07,
@@ -38,8 +38,8 @@ class AdvantageActorCritic(MonteCarloLearner):
     def call(self, state, deterministic=False, remember=True):
         (action, log_prob), value = self.network(state)
         if remember:
-            self.memory['log_prob'].append(th.squeeze(log_prob))
-            self.memory['values'].append(th.squeeze(log_prob))
+            self.memory['log_prob'].append(log_prob[0])
+            self.memory['values'].append(value[0])
         return action
 
     def learn(self):
@@ -65,10 +65,10 @@ def main():
     import gym
     from wacky import functional as funky
     #env = gym.make('CartPole-v0')
-    env = gym.make('CartPole-v0')
+    env = gym.make('LunarLanderContinuous-v2')
     network = funky.actor_critic_net_arch(env.observation_space, env.action_space)
     agent = AdvantageActorCritic(network)
-    agent.train(env, 300)
+    agent.train(env, 50_000, render=False)
     agent.test(env, 100)
 
 

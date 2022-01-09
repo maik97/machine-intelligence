@@ -52,8 +52,8 @@ class MonteCarloLearner(ReinforcementLearnerArchitecture):
             while not done:
 
                 state = th.FloatTensor(state).unsqueeze(0)
-                action = self.call(state, deterministic=False)[0]
-                state, reward, done, _ = env.step(action.item())
+                action = self.call(state, deterministic=False).detach()[0]
+                state, reward, done, _ = env.step(action.numpy())
                 self.reward_signal(reward)
                 self.done_signal(done)
 
@@ -76,8 +76,8 @@ class MonteCarloLearner(ReinforcementLearnerArchitecture):
 
             while not done:
                 state = th.FloatTensor(state).unsqueeze(0)
-                action = self.call(state, deterministic=True)[0]
-                state, reward, done, _ = env.step(action.item())
+                action = self.call(state, deterministic=True).detach()[0]
+                state, reward, done, _ = env.step(action.numpy())
 
                 if render:
                     env.render()

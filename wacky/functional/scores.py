@@ -15,7 +15,7 @@ def monte_carlo_returns(rewards, gamma=0.99, eps=1e-07, standardize=False):
     if standardize:
         returns = funky.standardize_tensor(returns, eps)
 
-    return returns
+    return th.unsqueeze(returns, dim=-1)
 
 
 def calc_advantages(returns, values, eps=1e-07, standardize=False):

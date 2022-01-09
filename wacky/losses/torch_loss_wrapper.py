@@ -9,4 +9,4 @@ class ValueLossWrapper(funky.MemoryBasedFunctional):
         self.scale_factor = scale_factor
 
     def call(self, memory: [dict, mem.MemoryDict], *args, **kwargs):
-        return self.scale_factor * self.loss_fn(memory['returns'], memory['log_prob'], *args, **kwargs).sum()
+        return self.scale_factor * self.loss_fn(memory['returns'], memory['values'], *args, **kwargs).sum()
