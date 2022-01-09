@@ -1,7 +1,6 @@
 import torch as th
 from wacky import functional as funky
 
-#ssadf
 
 def monte_carlo_returns(rewards, gamma=0.99, eps=1e-07, standardize=False):
 

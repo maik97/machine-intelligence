@@ -1,125 +1,100 @@
-import random
-import numpy as np
-import tensorflow as tf
+from collections import UserDict
+import torch as th
 
-class MemoryDict:
 
-    def __init__(self, maxlen=None):
+def all_equal(iterable):
+    iterator = iter(iterable)
 
-        self._memory = []
-        self.maxlen = maxlen
-        self.index_dict = {}
-        self._lenght = 0
+    try:
+        first_item = next(iterator)
+    except StopIteration:
+        return True
+
+    for x in iterator:
+        if x != first_item:
+            return False
+    return True
+
+
+class MemoryDict(UserDict):
+
+    def __init__(self, *args, **kwargs):
+        self.stacked = False
+        super(MemoryDict, self).__init__(*args, **kwargs)
+
+    def __getitem__(self, y):
+        if y not in self.keys():
+            self.__setitem__(key=y, value=[])
+        return super(MemoryDict, self).__getitem__(y)
+
+    def __setitem__(self, key, value):
+
+        if not isinstance(value, list) and not self.stacked:
+            error_msg = ("Setting value at key '"+str(key)+"' failed:"
+                        "\n Expected type "+str(list)+" got "+str(type(value))+" instead"
+                        "\n\n While not stacked, a value assigned to a key of MemoryDict"+
+                        "\n must be type list, not "+ str(type(value))+"."
+                        "\n Call the stack_tensors() method first, if you are trying to store a tensor"+
+                        "\n or using some of the function wrapper based on memory.")
+            raise TypeError(error_msg)
+
+        elif not isinstance(value, th.Tensor) and self.stacked:
+            error_msg = ("Setting value at key " + str(key) +
+                        "\n While stacked, a value assigned to a key of MemoryDict"+
+                        "\n must be type torch.Tensor, not " + str(type(value))+ " Call the clear() method first,"+
+                        "\n if you are trying to store a list of tensors")
+            raise TypeError(error_msg)
+        else:
+            super(MemoryDict, self).__setitem__(key, value)
+
+    def stack_tensors(self):
+        self.stacked = True
+        for key in self.keys():
+            self[key] = th.stack(self[key])
+
+    def clear(self) -> None:
+        self.stacked = False
+        super(MemoryDict, self).clear()
+
+    def batch(self, batch_size):
+        if not self.stacked:
+            self.stack_tensors()
+
+        splitted = self.split(batch_size, copy_dict=True)
+
+        if splitted.global_keys_len is not None:
+            sub_memories = []
+            for i in range(splitted.global_keys_len):
+                sub_mem = MemoryDict()
+                for key in splitted.keys():
+                    sub_mem[key].append(splitted[key][i])
+                sub_memories.append(sub_mem)
+            return sub_memories
+
+        else:
+            raise Exception("Number of batches not equal:", str(splitted.keys_len_dict))
+
+    def split(self, split_size_or_sections, copy_dict=True):
+        splitted = self.copy() if copy_dict else self
+        for key in splitted.keys():
+            splitted[key] = th.split(splitted[key], split_size_or_sections)
+        return splitted
+
+    def compare_len(self, key_a, key_b):
+        return len(self[key_a]) == len(self[key_b])
 
     @property
-    def num_arrays(self):
-        return len(self._memory)
+    def keys_len_dict(self):
+        return {key: len(self[key]) for key in self.keys()}
 
-    def __len__(self):
-        return self._lenght
+    @property
+    def keys_len_list(self):
+        return [len(self[key]) for key in self.keys()]
 
-    def _check_maxlen(self):
-        if not self.maxlen is None:
-            if self._lenght > self.maxlen:
-                self.pop(0)
-                self._lenght -= 1
-
-    def _get_index(self, index_or_key):
-        if isinstance(index_or_key, str):
-            return self.index_dict[index_or_key]
-        return index_or_key
-
-    def keys(self):
-        return self.index_dict.keys()
-
-    def pop(self, index):
-        for elem in self._memory: np.delete(elem, index)
-
-    def pop_array(self, index_or_key):
-
-        index = self._get_index(index_or_key)
-        self._memory.pop(index)
-
-        if isinstance(index_or_key, str):
-            self.index_dict.pop(index_or_key, None)
-
-        for key in self.index_dict.keys():
-            if self.index_dict[key] > index:
-                self.index_dict[key] = self.index_dict[key] - 1
-
-    def clear(self):
-        self._memory = []
-        self.index_dict = {}
-        self._lenght = 0
-
-    def __call__(self, to_remember, *arg, **kwargs):
-
-        if isinstance(to_remember, list):
-            for i in range(len(to_remember)):
-                self._add_item_to_memory(to_remember[i], index=i)
-
-        elif isinstance(to_remember, dict):
-            for key in to_remember.keys():
-                self._add_item_to_memory(to_remember[key], key=key)
-
+    @property
+    def global_keys_len(self):
+        if all_equal(self.keys_len_list):
+            return self.keys_len_list[0]
         else:
-            self._add_item_to_memory(to_remember, *arg, **kwargs)
+            return None
 
-        self._lenght = len(self._memory[0])
-        self._check_maxlen()
-
-    def _add_item_to_memory(self, items_to_remember, key=None, index=None):
-
-        if isinstance(items_to_remember, tf.Tensor):
-            items_to_remember = items_to_remember.numpy()
-
-        if not key is None:
-            if not key in self.keys():
-                self.index_dict[key] = self.num_arrays
-            index = self.index_dict[key]
-
-        if not index is None:
-            try:
-                self._memory[index] = np.concatenate([self._memory[index], np.array([items_to_remember])], axis=0)
-            except:
-                self._memory.append(np.array([items_to_remember]))
-
-    def __getitem__(self, key_or_index):
-        if isinstance(key_or_index, str):
-            key_or_index = self._memory[self.index_dict[key_or_index]]
-        return self._memory[key_or_index]
-
-    def replay(self, to_tensor=True, indices=None):
-        if indices is None:
-            mem_list = self._memory
-        else:
-            mem_list = [elem[indices] for elem in self._memory]
-        if to_tensor:
-            return [tf.stack(elem) for elem in mem_list]
-
-        return mem_list
-
-    def mini_batches(self, batch_size, num_batches=None, shuffle_batches=False, keys=None):
-
-        if not keys is None:
-            item_indices = []
-            for key in keys:
-                item_indices.append(self.index_dict[key])
-        else:
-            item_indices = range(self.num_arrays)
-
-        shift_by = np.random.randint(low=0, high=batch_size+1)
-        batches = []
-        for i in item_indices:
-            mem_copy = np.copy(self._memory[i])
-            mem_copy = np.roll(mem_copy, shift_by)
-            batches.append(np.array_split(mem_copy, self._lenght // batch_size))
-
-        batches = list(zip(*batches))
-
-        if shuffle_batches:
-            random.shuffle(batches)
-
-        if num_batches is None:
-            return batches
-        return batches[-num_batches:]
