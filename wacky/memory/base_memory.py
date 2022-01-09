@@ -139,7 +139,7 @@ test = np.load('dicom_data_analysis_all.npy')
 print(test.shape)
 last_row = np.asarray(test[-1], dtype=np.float64)
 print(last_row)
-test = np.delete(test, np.argwhere(last_row < 3.5)).reshape(5,-1)
+test = np.delete(test, np.argwhere(last_row < 3.5), axis=1).reshape(5,-1)
 print(test.shape)
 print(test[-1])
 
