@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import wacky.functional as funky
-from  wacky.agents.base_learner import ReinforcementLearnerArchitecture
+from wacky.agents import ReinforcementLearnerArchitecture
 
 class ActorCriticArchitecture(ReinforcementLearnerArchitecture):
 
@@ -52,7 +52,7 @@ class AdvantageActorCriticModule(nn.Module):
             self.activation_out = F.tanh
 
         if optimizer is None:
-            optimizer = optim.Adam(self.parameters())
+            optimizer = torch.optim.Adam(self.parameters())
         self.optimizer = optimizer
 
         self.reset()
@@ -95,7 +95,7 @@ class AdvantageActorCriticModule(nn.Module):
         prob = torch.squeeze(torch.stack(self.prob_list)).float()
         log_probs = torch.squeeze(torch.log(prob)).float()
 
-        returns = funky.n_step_returns(rewards=r, gamma=0.9, eps=np.finfo(np.float32).eps.item()).float()
+        returns = funky.monte_carlo_returns(rewards=r, gamma=0.9, eps=np.finfo(np.float32).eps.item()).float()
         advantages = funky.calc_advantages(returns=r, values=v).float()
 
         policy_losses = funky.adv_actor_critic_loss(log_prob=log_probs, advantage=advantages).float()
@@ -132,10 +132,8 @@ class ExperimentalAdvantageActorCriticModule(nn.Module):
             self.activation_out = F.tanh
 
         if optimizer is None:
-            optimizer = 'adam'
-
-        if isinstance(optimizer, str):
-            self.optimizer = optimizer
+            optimizer = torch.optim.Adam(self.parameters())
+        self.optimizer = optimizer
 
         self.reset()
 
@@ -177,7 +175,7 @@ class ExperimentalAdvantageActorCriticModule(nn.Module):
         prob = torch.squeeze(torch.stack(self.prob_list)).float()
         log_probs = torch.squeeze(torch.log(prob)).float()
 
-        returns = funky.n_step_returns(rewards=r, gamma=0.9, eps=np.finfo(np.float32).eps.item()).float()
+        returns = funky.monte_carlo_returns(rewards=r, gamma=0.9, eps=np.finfo(np.float32).eps.item()).float()
         advantages = funky.calc_advantages(returns=r, values=v).float()
 
         policy_losses = funky.adv_actor_critic_loss(log_prob=log_probs, advantage=advantages).float()

@@ -1,6 +1,40 @@
 from wacky import functional as funky
 from wacky import memory as mem
 
+class NoBaselineLoss(funky.MemoryBasedFunctional):
+    def __init__(self, scale_factor=1.0):
+        super().__init__()
+        self.scale_factor = scale_factor
+
+    def call(self, memory: [dict, mem.MemoryDict]):
+        return self.scale_factor * funky.basic_score_loss(
+            score=memory['returns'],
+            log_prob=memory['log_prob'],
+        )
+
+class WithBaselineLoss(funky.MemoryBasedFunctional):
+    def __init__(self, scale_factor=1.0, baseline=None):
+        super().__init__()
+        self.scale_factor = scale_factor
+        self.baseline_calc = baseline # TODO: Implement baseline functions
+
+    def call(self, memory: [dict, mem.MemoryDict]):
+        return self.scale_factor * funky.basic_score_loss(
+            score=memory['baseline_returns'],
+            log_prob=memory['log_prob'],
+        )
+
+class AdvantageLoss(funky.MemoryBasedFunctional):
+
+    def __init__(self, scale_factor=1.0):
+        super().__init__()
+        self.scale_factor = scale_factor
+
+    def call(self, memory: [dict, mem.MemoryDict]):
+        return self.scale_factor * funky.basic_score_loss(
+            score=memory['advantage'],
+            log_prob=memory['log_prob'],
+        )
 
 class ClippedSurrogateLoss(funky.MemoryBasedFunctional):
 
@@ -29,13 +63,4 @@ class ClippedSurrogateLoss(funky.MemoryBasedFunctional):
         )
 
 
-class AdvantageActorCriticLoss(funky.MemoryBasedFunctional):
 
-    def __init__(self):
-        super().__init__()
-
-    def call(self, memory: [dict, mem.MemoryDict]):
-        return funky.adv_actor_critic_loss(
-            log_prob=memory['log_prob'],
-            advantage=memory['advantage']
-        )

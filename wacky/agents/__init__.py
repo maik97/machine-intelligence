@@ -1,4 +1,4 @@
 from wacky.agents import pre_built
 
 from wacky.agents.actor_critic_architectures import ActorCriticArchitecture
-from wacky.agents.base_learner import ReinforcementLearnerArchitecture
+from wacky.agents.base_learner import ReinforcementLearnerArchitecture, MonteCarloLearner

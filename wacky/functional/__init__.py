@@ -6,3 +6,4 @@ from wacky.functional.losses import *
 from wacky.functional.memory import *
 from wacky.functional.network_constructors import *
 from wacky.functional.scores import *
+from wacky.functional.funcs import *

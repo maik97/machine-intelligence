@@ -15,13 +15,19 @@ class ReinforcementLearnerArchitecture(funky.WackyBase):
         pass
 
     def reset(self):
-        pass
+        if hasattr(self, 'memory') and hasattr(self, 'reset_memory'):
+            if self.reset_memory:
+                self.memory.clear()
 
     def reward_signal(self, reward):
-        pass
+        if hasattr(self, 'memory') and hasattr(self, 'remember_reward'):
+            if self.remember_reward:
+                self.memory['reward'].append(reward)
 
     def done_signal(self, done):
-        pass
+        if hasattr(self, 'memory') and hasattr(self, 'remember_done'):
+            if self.remember_done:
+                self.memory['done'].append(done)
 
     def learn(self):
         pass

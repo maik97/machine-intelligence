@@ -1,4 +1,5 @@
 import torch as th
+from wacky import functional as funky
 
 
 def monte_carlo_returns(rewards, gamma=0.99, eps=1e-07, standardize=False):
@@ -12,10 +13,13 @@ def monte_carlo_returns(rewards, gamma=0.99, eps=1e-07, standardize=False):
     returns = th.tensor(returns)
 
     if standardize:
-        returns = (returns - returns.mean()) / (returns.std() + eps)
+        returns = funky.standardize_tensor(returns, eps)
 
     return returns.detach()
 
 
-def calc_advantages(returns, values):
-    return th.sub(returns, values)
+def calc_advantages(returns, values, eps=1e-07, standardize=False):
+    advantages = th.sub(returns, values)
+    if standardize:
+        advantages = funky.standardize_tensor(advantages, eps)
+    return advantages
