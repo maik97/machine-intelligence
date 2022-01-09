@@ -1,5 +1,7 @@
-from collections import UserDict
+from collections import UserDict, UserList
+from collections.abc import Iterable
 import torch as th
+import numpy as np
 
 
 def all_equal(iterable):
@@ -16,6 +18,22 @@ def all_equal(iterable):
     return True
 
 
+class TensorList(UserList):
+
+    def __init__(self, initlist=None):
+        super(TensorList, self).__init__(initlist)
+
+        if initlist is not None:
+            for i in range(len(self)):
+                if not isinstance(self[i], th.Tensor):
+                    self[i] = th.tensor(self[i], dtype=th.float)
+
+    def append(self, item: th.Tensor) -> None:
+        if not isinstance(item, th.Tensor):
+            item = th.tensor(item, dtype=th.float)
+        super(TensorList, self).append(item)
+
+
 class MemoryDict(UserDict):
 
     def __init__(self, *args, **kwargs):
@@ -23,29 +41,45 @@ class MemoryDict(UserDict):
         super(MemoryDict, self).__init__(*args, **kwargs)
 
     def __getitem__(self, y):
-        if y not in self.keys():
-            self.__setitem__(key=y, value=[])
+        if y not in self.keys() and not self.stacked:
+            self.__setitem__(key=y, value=TensorList())
         return super(MemoryDict, self).__getitem__(y)
 
     def __setitem__(self, key, value):
 
-        if not isinstance(value, list) and not self.stacked:
-            error_msg = ("Setting value at key '"+str(key)+"' failed:"
-                        "\n Expected type "+str(list)+" got "+str(type(value))+" instead"
-                        "\n\n While not stacked, a value assigned to a key of MemoryDict"+
-                        "\n must be type list, not "+ str(type(value))+"."
-                        "\n Call the stack_tensors() method first, if you are trying to store a tensor"+
-                        "\n or using some of the function wrapper based on memory.")
-            raise TypeError(error_msg)
+        if not self.stacked:
+            e_1 = None
+            e_2 = None
 
-        elif not isinstance(value, th.Tensor) and self.stacked:
-            error_msg = ("Setting value at key " + str(key) +
-                        "\n While stacked, a value assigned to a key of MemoryDict"+
-                        "\n must be type torch.Tensor, not " + str(type(value))+ " Call the clear() method first,"+
-                        "\n if you are trying to store a list of tensors")
-            raise TypeError(error_msg)
-        else:
-            super(MemoryDict, self).__setitem__(key, value)
+            if not isinstance(value , Iterable):
+                try:
+                    value = TensorList(value)
+                except Exception as e:
+                    e_1 = f"\n Converting value at key '{key}' to Iterable failed:\n {e}"
+
+            if not isinstance(value, (TensorList, th.Tensor)):
+                try:
+                    value = TensorList(value)
+                except Exception as e:
+                    e_2 = f"\n Converting value at key '{key}' to TensorList failed:\n {e}"
+
+            if not isinstance(value, TensorList):
+                e_3 = (f"\n Setting value at key '{key}' failed: Invalid type {type(value)}"
+                        f"\n While not stacked, assigned values to keys of {MemoryDict} must be convertable to {list},"
+                        f"\n Call the stack_tensors() method first, if you are trying to store a tensor"
+                        f" or using some of the function wrapper based on memory.")
+                if e_2 is not None:
+                    e_3 = e_2 + "\n" + e_3
+                if e_1 is not None:
+                    e_3 = e_1 + "\n" + e_3
+                raise TypeError(e_3)
+
+        elif not isinstance(value, th.Tensor):
+            raise TypeError(f"\n Setting value at key '{key}' failed: Expected type {th.Tensor} got {type(value)} instead."
+                            f"\n While stacked, assigned values to keys of {MemoryDict} must be type {th.Tensor}."
+                            f"\n Call the clear() method first, if you are trying to store a list of tensors.")
+
+        super(MemoryDict, self).__setitem__(key, value)
 
     def stack_tensors(self):
         self.stacked = True
@@ -57,15 +91,13 @@ class MemoryDict(UserDict):
         super(MemoryDict, self).clear()
 
     def batch(self, batch_size):
-        if not self.stacked:
-            self.stack_tensors()
-
         splitted = self.split(batch_size, copy_dict=True)
 
         if splitted.global_keys_len is not None:
             sub_memories = []
             for i in range(splitted.global_keys_len):
                 sub_mem = MemoryDict()
+                sub_mem.stacked = True
                 for key in splitted.keys():
                     sub_mem[key].append(splitted[key][i])
                 sub_memories.append(sub_mem)
@@ -76,12 +108,16 @@ class MemoryDict(UserDict):
 
     def split(self, split_size_or_sections, copy_dict=True):
         splitted = self.copy() if copy_dict else self
+
+        if not splitted.stacked:
+            splitted.stack_tensors()
+
         for key in splitted.keys():
             splitted[key] = th.split(splitted[key], split_size_or_sections)
         return splitted
 
-    def compare_len(self, key_a, key_b):
-        return len(self[key_a]) == len(self[key_b])
+    def compare_len(self, keys: list):
+        return all_equal(len(self[key]) for key in keys)
 
     @property
     def keys_len_dict(self):
@@ -97,4 +133,13 @@ class MemoryDict(UserDict):
             return self.keys_len_list[0]
         else:
             return None
+
+
+test = np.load('dicom_data_analysis_all.npy')
+print(test.shape)
+last_row = np.asarray(test[-1], dtype=np.float64)
+print(last_row)
+test = np.delete(test, np.argwhere(last_row < 3.5)).reshape(5,-1)
+print(test.shape)
+print(test[-1])
 
