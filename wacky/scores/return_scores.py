@@ -20,6 +20,7 @@ class MonteCarloReturns(funky.MemoryBasedFunctional):
         )
 
 
+
 class CalcAdvantages(funky.MemoryBasedFunctional):
 
     def __init__(self, eps=1e-07, standardize=False):

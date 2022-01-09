@@ -15,19 +15,13 @@ class ReinforcementLearnerArchitecture(funky.WackyBase):
         pass
 
     def reset(self):
-        if hasattr(self, 'memory') and hasattr(self, 'reset_memory'):
-            if self.reset_memory:
-                self.memory.clear()
+        pass
 
     def reward_signal(self, reward):
-        if hasattr(self, 'memory') and hasattr(self, 'remember_reward'):
-            if self.remember_reward:
-                self.memory['reward'].append(reward)
+        pass
 
     def done_signal(self, done):
-        if hasattr(self, 'memory') and hasattr(self, 'remember_done'):
-            if self.remember_done:
-                self.memory['done'].append(done)
+        pass
 
     def learn(self):
         pass
@@ -58,7 +52,7 @@ class MonteCarloLearner(ReinforcementLearnerArchitecture):
             while not done:
 
                 state = th.FloatTensor(state).unsqueeze(0)
-                action = self.call(state, deterministic=False)
+                action = self.call(state, deterministic=False)[0]
                 state, reward, done, _ = env.step(action.item())
                 self.reward_signal(reward)
                 self.done_signal(done)
@@ -67,6 +61,9 @@ class MonteCarloLearner(ReinforcementLearnerArchitecture):
                     env.render()
 
             self.learn()
+            print('rewards:',self.memory['rewards'].sum().numpy(),
+                  'probs:', th.exp(self.memory['log_prob'].detach()).mean().numpy()
+            )
 
     def test(self, env, num_episodes, render=True):
 

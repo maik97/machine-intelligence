@@ -2,27 +2,26 @@ import torch as th
 from torch.nn import functional as F
 
 from wacky.agents import MonteCarloLearner
-from wacky.losses import NoBaselineLoss, WithBaselineLoss, ValueLossWrapper
-from wacky.scores import MonteCarloReturns
+from wacky.losses import AdvantageLoss, ValueLossWrapper
+from wacky.scores import MonteCarloReturns, CalcAdvantages
 from wacky.memory import MemoryDict
 
 
-class ActorCritic(MonteCarloLearner):
+class AdvantageActorCritic(MonteCarloLearner):
 
     def __init__(
             self,
             network,
             optimizer: str = 'Adam',
-            lr: float = 0.01,
+            lr: float = 1.e-3,
             returns_gamma: float = 0.99,
             returns_standardize: bool = False,
             returns_standardize_eps: float = 1.e-07,
             actor_loss_scale_factor: float = 1.0,
             critic_loss_scale_factor: float = 0.5,
-            baseline: str = None,
             *args, **kwargs
     ):
-        super(ActorCritic, self).__init__(network, optimizer, lr, *args, **kwargs)
+        super(AdvantageActorCritic, self).__init__(network, optimizer, lr, *args, **kwargs)
 
         self.network = network
 
@@ -31,22 +30,22 @@ class ActorCritic(MonteCarloLearner):
         self.reset_memory = True
 
         self.calc_returns = MonteCarloReturns(returns_gamma, returns_standardize_eps, returns_standardize)
+        self.calc_advantages = CalcAdvantages()
 
-        if baseline is None:
-            self.actor_loss_fn = NoBaselineLoss(actor_loss_scale_factor)
-        else:
-            self.actor_loss_fn = WithBaselineLoss(actor_loss_scale_factor, baseline)
-
+        self.actor_loss_fn = AdvantageLoss(actor_loss_scale_factor)
         self.critic_loss_fn = ValueLossWrapper(F.smooth_l1_loss, critic_loss_scale_factor)
 
     def call(self, state, deterministic=False, remember=True):
-        action, log_prob = self.network(state, deterministic)
+        (action, log_prob), value = self.network(state)
         if remember:
-            self.memory['log_prob'].append(log_prob)
+            self.memory['log_prob'].append(th.squeeze(log_prob))
+            self.memory['values'].append(th.squeeze(log_prob))
         return action
 
     def learn(self):
+        self.memory.stack()
         self.memory['returns'] = self.calc_returns(self.memory)
+        self.memory['advantage'] = self.calc_advantages(self.memory)
         loss_actor = self.actor_loss_fn(self.memory)
         loss_critic = self.critic_loss_fn(self.memory)
 
@@ -54,3 +53,22 @@ class ActorCritic(MonteCarloLearner):
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+
+    def reset(self):
+        self.memory.clear()
+
+    def reward_signal(self, reward):
+        self.memory['rewards'].append(reward)
+
+
+def main():
+    import gym
+    from wacky import functional as funky
+    env = gym.make('CartPole-v0')
+    network = funky.actor_critic_net_arch(env.observation_space, env.action_space)
+    agent = AdvantageActorCritic(network)
+    agent.train(env, 10000)
+
+
+if __name__ == '__main__':
+    main()

@@ -30,7 +30,7 @@ class MemoryBasedFunctional(WackyBase):
         if self._check_type:
             backend.check_type(memory, (dict, mem.MemoryDict), 'memory')
             self._check_type = False
-        self.call(memory)
+        return self.call(memory)
 
     @abc.abstractmethod
     def call(self, memory):

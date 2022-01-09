@@ -14,7 +14,7 @@ from wacky.backend.error_messages import check_type, raise_type_error
 def make_shared_net_for_actor_critic(observation_space, shared_net, activation_shared):
     if shared_net is None:
         shared_net_module = None
-        in_features = decode_gym_space(observation_space, allowed_spaces=[spaces.Box])
+        in_features = int(decode_gym_space(observation_space, allowed_spaces=[spaces.Box])[0])
 
     elif isinstance(shared_net, list):
         shared_net_module = MultiLayerPerceptron(
@@ -35,7 +35,7 @@ def make_shared_net_for_actor_critic(observation_space, shared_net, activation_s
     return in_features, shared_net_module
 
 
-def make_actor_net(action_space, in_features, actor_net, activation_actor):
+def make_actor_net(action_space, in_features, actor_net=None, activation_actor=th.nn.ReLU()):
     if actor_net is None:
         actor_net = [64, 64]
 
@@ -84,9 +84,9 @@ def actor_critic_net_arch(
         shared_net=None,
         actor_net=None,
         critic_net=None,
-        activation_shared=F.relu,
-        activation_actor=F.tanh,
-        activation_critic=None,
+        activation_shared=nn.ReLU(),
+        activation_actor=nn.ReLU(),
+        activation_critic=nn.ReLU(),
 ):
     in_features, shared_net_module = make_shared_net_for_actor_critic(observation_space, shared_net, activation_shared)
     actor_net_module = make_actor_net(action_space, in_features, actor_net, activation_actor)

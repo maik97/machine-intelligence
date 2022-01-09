@@ -17,6 +17,8 @@ class ActorCriticNetwork(nn.Module):
     def forward(self, x):
         if self.shared_net_module is not None:
             x = self.shared_net_module(x)
+        self.actor_net_module(x)
+        self.critic_net_module(x)
         return self.actor_net_module(x), self.critic_net_module(x)
 
 

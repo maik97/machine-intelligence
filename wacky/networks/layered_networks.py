@@ -49,11 +49,12 @@ class ParallelLayers(nn.Module):
         backend.check_type(module, nn.Module, 'module')
 
         self.in_features = in_features
+        self.out_features = self._out_features
         self.layers = [module(in_features, out_features, *args, **kwargs) for out_features in out_features_list]
         self.activations = [None] * len(self) if activations_list is None else activations_list
 
     @property
-    def out_features(self):
+    def _out_features(self):
         return [layer.out_features for layer in self.layers]
 
     def __len__(self):
@@ -73,6 +74,8 @@ class ParallelLayers(nn.Module):
 
 class MultiLayerPerceptron(nn.Module):
 
+    __constants__ = ['in_features', 'out_features']
+
     def __init__(
             self,
             in_features: int,
@@ -84,11 +87,12 @@ class MultiLayerPerceptron(nn.Module):
         super(MultiLayerPerceptron, self).__init__()
         backend.check_type(in_features, int, 'in_features')
         backend.check_type(layer_units, (list, int), 'layer_units')
-        backend.check_type(activation_hidden, list, 'activation_hidden', allow_none=True)
-        backend.check_type(activation_out, list, 'activation_out', allow_none=True)
+        #backend.check_type(activation_hidden, function, 'activation_hidden', allow_none=True)
+        #backend.check_type(activation_out, list, 'activation_out', allow_none=True)
 
+        self.layers = nn.ModuleList()
         self.in_features = in_features
-        self.layers = []
+        self.out_features = in_features
 
         if layer_units is not None:
 
@@ -109,20 +113,14 @@ class MultiLayerPerceptron(nn.Module):
     def __len__(self):
         return len(self.layers)
 
-    @property
-    def out_features(self):
-        if len(self) == 0:
-            return self.in_features
-        else:
-            return self.layers[-1].out_features
-
     def forward(self, x):
         for layer in self.layers:
             x = layer(x)
         return x
 
     def append_layer(self, units, activation, module=nn.Linear, *args, **kwargs):
-        backend.check_type(module, nn.Module, 'module')
-        self.layer_list.append(module(self.out_features, units, *args, **kwargs))
+        new_layer = module(self.out_features, units, *args, **kwargs)
+        self.out_features = new_layer.out_features
+        self.layers.append(new_layer)
         if activation is not None:
-            self.layer_list.append(activation)
+            self.layers.append(activation)

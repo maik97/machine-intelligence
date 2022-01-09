@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import wacky.functional as funky
-from wacky.agents import ReinforcementLearnerArchitecture
+from wacky.agents.base_learner import ReinforcementLearnerArchitecture
 
 class ActorCriticArchitecture(ReinforcementLearnerArchitecture):
 

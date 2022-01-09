@@ -1,7 +1,6 @@
 from collections import UserDict, UserList
 from collections.abc import Iterable
 import torch as th
-import numpy as np
 
 
 def all_equal(iterable):
@@ -20,29 +19,45 @@ def all_equal(iterable):
 
 class TensorList(UserList):
 
-    def __init__(self, initlist=None):
+    def __init__(self, initlist=None, maxlen=None):
+        self.maxlen = maxlen
         super(TensorList, self).__init__(initlist)
 
         if initlist is not None:
-            for i in range(len(self)):
-                if not isinstance(self[i], th.Tensor):
-                    self[i] = th.tensor(self[i], dtype=th.float)
+            for idx in range(len(self)):
+                if not isinstance(self[idx], th.Tensor):
+                    self[idx] = th.tensor(self[idx], dtype=th.float)
 
     def append(self, item: th.Tensor) -> None:
         if not isinstance(item, th.Tensor):
             item = th.tensor(item, dtype=th.float)
         super(TensorList, self).append(item)
+        self.check_maxlen()
+
+    def check_maxlen(self):
+        if self.maxlen is not None:
+            while len(self) > self.maxlen:
+                self.pop(0)
 
 
 class MemoryDict(UserDict):
 
     def __init__(self, *args, **kwargs):
         self.stacked = False
+        self.maxlen = None
         super(MemoryDict, self).__init__(*args, **kwargs)
+
+    def set_maxlen(self, maxlen):
+        self.maxlen = maxlen
+        if not self.stacked:
+            for key in self.keys():
+                self[key].maxlen = self.maxlen
+                self[key].check_maxlen()
+        return self
 
     def __getitem__(self, y):
         if y not in self.keys() and not self.stacked:
-            self.__setitem__(key=y, value=TensorList())
+            self.__setitem__(key=y, value=TensorList(maxlen=self.maxlen))
         return super(MemoryDict, self).__getitem__(y)
 
     def __setitem__(self, key, value):
@@ -51,23 +66,23 @@ class MemoryDict(UserDict):
             e_1 = None
             e_2 = None
 
-            if not isinstance(value , Iterable):
+            if not isinstance(value, Iterable):
                 try:
-                    value = TensorList(value)
+                    value = TensorList([value], maxlen=self.maxlen)
                 except Exception as e:
                     e_1 = f"\n Converting value at key '{key}' to Iterable failed:\n {e}"
 
             if not isinstance(value, (TensorList, th.Tensor)):
                 try:
-                    value = TensorList(value)
+                    value = TensorList(value, maxlen=self.maxlen)
                 except Exception as e:
                     e_2 = f"\n Converting value at key '{key}' to TensorList failed:\n {e}"
 
             if not isinstance(value, TensorList):
                 e_3 = (f"\n Setting value at key '{key}' failed: Invalid type {type(value)}"
-                        f"\n While not stacked, assigned values to keys of {MemoryDict} must be convertable to {list},"
-                        f"\n Call the stack_tensors() method first, if you are trying to store a tensor"
-                        f" or using some of the function wrapper based on memory.")
+                       f"\n While not stacked, assigned values to keys of {MemoryDict} must be convertable to {list},"
+                       f"\n Call the stack_tensors() method first, if you are trying to store a tensor"
+                       f" or using some of the function wrapper based on memory.")
                 if e_2 is not None:
                     e_3 = e_2 + "\n" + e_3
                 if e_1 is not None:
@@ -75,46 +90,49 @@ class MemoryDict(UserDict):
                 raise TypeError(e_3)
 
         elif not isinstance(value, th.Tensor):
-            raise TypeError(f"\n Setting value at key '{key}' failed: Expected type {th.Tensor} got {type(value)} instead."
+            raise TypeError(f"\n Setting value at key '{key}' failed:"
+                            f" Expected type {th.Tensor} got {type(value)} instead."
                             f"\n While stacked, assigned values to keys of {MemoryDict} must be type {th.Tensor}."
                             f"\n Call the clear() method first, if you are trying to store a list of tensors.")
 
         super(MemoryDict, self).__setitem__(key, value)
 
-    def stack_tensors(self):
+    def stack(self):
         self.stacked = True
         for key in self.keys():
-            self[key] = th.stack(self[key])
+            self[key] = th.stack(tuple(self[key]))
 
     def clear(self) -> None:
         self.stacked = False
         super(MemoryDict, self).clear()
 
     def batch(self, batch_size):
-        splitted = self.split(batch_size, copy_dict=True)
+        split_mem = self.split(batch_size, copy_dict=True)
 
-        if splitted.global_keys_len is not None:
+        if split_mem.global_keys_len is not None:
             sub_memories = []
-            for i in range(splitted.global_keys_len):
+            for idx in range(split_mem.global_keys_len):
                 sub_mem = MemoryDict()
                 sub_mem.stacked = True
-                for key in splitted.keys():
-                    sub_mem[key].append(splitted[key][i])
+                for key in split_mem.keys():
+                    sub_mem[key] = split_mem[key][idx]
                 sub_memories.append(sub_mem)
             return sub_memories
 
         else:
-            raise Exception("Number of batches not equal:", str(splitted.keys_len_dict))
+            raise Exception("Number of batches not equal:", str(split_mem.keys_len_dict))
 
     def split(self, split_size_or_sections, copy_dict=True):
-        splitted = self.copy() if copy_dict else self
+        split_mem = self.copy() if copy_dict else self
 
-        if not splitted.stacked:
-            splitted.stack_tensors()
+        if not split_mem.stacked:
+            split_mem.stack()
+        split_mem.stacked = False
 
-        for key in splitted.keys():
-            splitted[key] = th.split(splitted[key], split_size_or_sections)
-        return splitted
+        for key in split_mem.keys():
+            split_mem[key] = th.split(split_mem[key], split_size_or_sections)
+
+        return split_mem
 
     def compare_len(self, keys: list):
         return all_equal(len(self[key]) for key in keys)
