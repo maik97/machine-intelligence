@@ -61,7 +61,8 @@ class MonteCarloLearner(ReinforcementLearnerArchitecture):
                     env.render()
 
             self.learn()
-            print('rewards:',self.memory['rewards'].sum().numpy(),
+            print('episode:', e,
+                  'rewards:', self.memory['rewards'].sum().numpy(),
                   'probs:', th.exp(self.memory['log_prob'].detach()).mean().numpy()
             )
 
@@ -75,7 +76,7 @@ class MonteCarloLearner(ReinforcementLearnerArchitecture):
 
             while not done:
                 state = th.FloatTensor(state).unsqueeze(0)
-                action = self.call(state, deterministic=True)
+                action = self.call(state, deterministic=True)[0]
                 state, reward, done, _ = env.step(action.item())
 
                 if render:

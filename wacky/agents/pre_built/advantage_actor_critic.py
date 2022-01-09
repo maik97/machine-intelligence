@@ -45,7 +45,7 @@ class AdvantageActorCritic(MonteCarloLearner):
     def learn(self):
         self.memory.stack()
         self.memory['returns'] = self.calc_returns(self.memory)
-        self.memory['advantage'] = self.calc_advantages(self.memory)
+        self.memory['advantage'] = self.calc_advantages(self.memory).detach()
         loss_actor = self.actor_loss_fn(self.memory)
         loss_critic = self.critic_loss_fn(self.memory)
 
@@ -64,10 +64,12 @@ class AdvantageActorCritic(MonteCarloLearner):
 def main():
     import gym
     from wacky import functional as funky
+    #env = gym.make('CartPole-v0')
     env = gym.make('CartPole-v0')
     network = funky.actor_critic_net_arch(env.observation_space, env.action_space)
     agent = AdvantageActorCritic(network)
-    agent.train(env, 10000)
+    agent.train(env, 300)
+    agent.test(env, 100)
 
 
 if __name__ == '__main__':
