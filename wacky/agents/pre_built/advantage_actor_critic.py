@@ -68,7 +68,7 @@ def main():
     #env = gym.make('LunarLanderContinuous-v2')
     network = funky.actor_critic_net_arch(env.observation_space, env.action_space)
     agent = AdvantageActorCritic(network)
-    agent.train(env, 1000, render=False)
+    agent.train(env, 1000)
     agent.test(env, 100)
 
 
