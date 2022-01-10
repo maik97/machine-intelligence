@@ -1,4 +1,3 @@
-import torch as th
 from wacky import functional as funky
 
 
@@ -18,7 +17,6 @@ class MonteCarloReturns(funky.MemoryBasedFunctional):
             eps=self.eps,
             standardize=self.standardize,
         )
-
 
 
 class CalcAdvantages(funky.MemoryBasedFunctional):

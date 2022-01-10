@@ -19,7 +19,7 @@ class ContinuousDistributionModule(nn.Module):
         mu = self.activation_mu(self.mu_layer(x))# for mu_layer in self.mu_layers]
         sigma = self.activation_sigma(self.sigma_layer(x))# for sigma_layer in self.sigma_layers]
 
-        mu = th.clamp(mu, min=0.1)
+        mu = th.clamp(mu, min=0.4)
         distribution = Normal(mu, sigma)
         action = distribution.rsample() if not deterministic else mu
         log_prob = distribution.log_prob(action)
