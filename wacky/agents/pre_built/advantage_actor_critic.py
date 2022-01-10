@@ -1,5 +1,4 @@
 import torch as th
-from torch.nn import functional as F
 
 from wacky.agents import MonteCarloLearner
 from wacky.losses import AdvantageLoss, ValueLossWrapper
@@ -33,7 +32,7 @@ class AdvantageActorCritic(MonteCarloLearner):
         self.calc_advantages = CalcAdvantages()
 
         self.actor_loss_fn = AdvantageLoss(actor_loss_scale_factor)
-        self.critic_loss_fn = ValueLossWrapper(F.smooth_l1_loss, critic_loss_scale_factor)
+        self.critic_loss_fn = ValueLossWrapper(th.nn.SmoothL1Loss(), critic_loss_scale_factor)
 
     def call(self, state, deterministic=False, remember=True):
         (action, log_prob), value = self.network(state)
@@ -65,7 +64,7 @@ def main():
     import gym
     from wacky import functional as funky
     env = gym.make('CartPole-v0')
-    #env = gym.make('LunarLanderContinuous-v2')
+    # env = gym.make('LunarLanderContinuous-v2')
     network = funky.actor_critic_net_arch(env.observation_space, env.action_space)
     agent = AdvantageActorCritic(network)
     agent.train(env, 1000)
