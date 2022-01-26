@@ -39,6 +39,9 @@ def make_actor_net(action_space, in_features, actor_net=None, activation_actor=t
     if actor_net is None:
         actor_net = [64, 64]
 
+    elif isinstance(actor_net, int):
+        actor_net = [actor_net]
+
     if isinstance(actor_net, list):
         actor_net_module = MultiLayerPerceptron(
             in_features=in_features,

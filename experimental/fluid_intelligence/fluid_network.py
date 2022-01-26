@@ -2,7 +2,6 @@ import torch as th
 from torch import nn
 from wacky import functional as funky
 
-
 class FluidLayer(nn.Module):
 
     __constants__ = ['in_features', 'out_features']

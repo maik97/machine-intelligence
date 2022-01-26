@@ -10,7 +10,7 @@ class WackyBase(metaclass=abc.ABCMeta):
         pass
 
     def __call__(self, *args, **kwargs):
-        self.call(*args, **kwargs)
+        return self.call(*args, **kwargs)
 
     @abc.abstractmethod
     def call(self, *args, **kwargs):
