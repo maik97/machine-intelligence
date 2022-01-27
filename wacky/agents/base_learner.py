@@ -122,9 +122,9 @@ class BootstrappingLearner(ReinforcementLearnerArchitecture):
             if train_interval_counter():
                 self.learn()
                 print('steps:', t,
-                      'rewards:', episode_rewards.mean_of_sums(),
-                      'actions:', self.memory['actions'].detach().mean().numpy(),
-                      'epsilon:', self.g
+                      'rewards:', episode_rewards.reduce_mean(decimals=3),
+                      'actions:', self.memory.numpy('actions', reduce='mean', decimals=3),
+                      'epsilon:', np.round(self.epsilon_greedy.eps, 3),
                 )
                 self.reset()
                 #self.test(env, 1)

@@ -5,7 +5,7 @@ from wacky.agents import BootstrappingLearner
 from wacky.losses import ValueLossWrapper
 from wacky.scores import NStepReturns, TemporalDifferenceReturns
 from wacky.memory import MemoryDict
-from wacky.exploration import EpsilonGreedy
+from wacky.exploration import DiscountingEpsilonGreedy
 from wacky.networks import DoubleNetworkWrapper
 
 from wacky import functional as funky
@@ -43,7 +43,7 @@ class DoubleDQN(BootstrappingLearner):
         self.memory = MemoryDict()
         self.reset_memory = True
 
-        self.epsilon_greedy = EpsilonGreedy(
+        self.epsilon_greedy = DiscountingEpsilonGreedy(
             action_space,
             eps_init=eps_init,
             eps_discount=eps_discount,
@@ -66,32 +66,28 @@ class DoubleDQN(BootstrappingLearner):
             self.memory['actions'].append(action)
         return action
 
-    def next_state(self, state):
-        self.memory['next_states'].append(np.squeeze(state))
+    def reset(self):
+        self.memory.clear()
 
-    def reward_signal(self, reward):
-        self.memory['rewards'].append(reward)
 
-    def done_signal(self, done):
-        self.memory['dones'].append(done)
 
-    def action_as_idx(self, batch, i):
-        return int(batch['actions'].numpy()[i])
-
+    def q_for_state_action_pair(self, batch):
+        values = th.squeeze(self.network.behavior(batch['states']))
+        actions = batch['actions'].numpy()
+        values = th.stack([values[i, int(actions[i])] for i in range(len(values))])
+        return th.reshape(values, (-1, 1))
 
     def max_q_next_states(self, batch):
-        next_values = np.max(self.network.target(batch['next_states']).detach().numpy(), -1)
-        return th.tensor(next_values)
+        next_values = self.network.target(batch['next_states']).detach().numpy()
+        next_values = th.tensor(np.max(next_values, -1))
+        return next_values
 
     def learn(self):
 
-        self.memory.stack()
-
+        #self.memory.stack()
         for batch in self.memory.batch(self.batch_size):
 
-            values = th.squeeze(self.network.behavior(batch['states']))
-            values = th.stack([values[i, self.action_as_idx(batch, i)] for i in range(len(values))])
-            batch['values'] = th.reshape(values, (-1, 1))
+            batch['values'] = self.q_for_state_action_pair(batch)
             batch['next_values'] = self.max_q_next_states(batch)
 
             batch['returns'] = self.calc_returns(batch)
@@ -103,8 +99,42 @@ class DoubleDQN(BootstrappingLearner):
 
         self.network.update_target_weights()
 
-    def reset(self):
-        self.memory.clear()
+    def train(self, env, num_steps, train_interval, render=False):
+
+        done = True
+        train_interval_counter = funky.ThresholdCounter(train_interval)
+        episode_rewards = funky.ValueTracer()
+        for t in range(num_steps):
+
+            if done:
+                state = env.reset()
+                episode_rewards.sum()
+
+            state = th.FloatTensor(state).unsqueeze(0)
+            action = self.call(state, deterministic=False)
+            if isinstance(action, th.Tensor):
+                action = action.detach()[0].numpy()
+            state, reward, done, _ = env.step(action)
+
+            self.memory['next_states'].append(np.squeeze(state))
+            self.memory['rewards'].append(reward)
+            self.memory['dones'].append(done)
+            episode_rewards(reward)
+
+            if render:
+                env.render()
+
+            if train_interval_counter():
+                self.learn()
+                print('steps:', t,
+                      'rewards:', episode_rewards.reduce_mean(decimals=3),
+                      'actions:', self.memory.numpy('actions', reduce='mean', decimals=3),
+                      'epsilon:', np.round(self.epsilon_greedy.eps, 3),
+                )
+                self.reset()
+                #self.test(env, 1)
+
+
 
 
 def main():

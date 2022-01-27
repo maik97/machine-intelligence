@@ -1,6 +1,8 @@
 from collections import UserDict, UserList
 from collections.abc import Iterable
 import torch as th
+import numpy as np
+from wacky import functional as funky
 
 
 def all_equal(iterable):
@@ -97,10 +99,33 @@ class MemoryDict(UserDict):
 
         super(MemoryDict, self).__setitem__(key, value)
 
+    def stacked_key(self, key):
+        return th.stack(tuple(self[key]))
+
+    def numpy(self, key:str, reduce:str=None, decimals:int=None):
+        if self.stacked:
+            vals = self[key].detach().numpy()
+        else:
+            vals = self.stacked_key(key).detach().numpy()
+
+        if reduce is not None:
+            if reduce == 'mean':
+                vals =  np.mean(vals)
+            elif reduce == 'sum':
+                vals = np.sum(vals)
+            else:
+                raise ValueError(f"Expected 'reduce' to be (None, 'mean', 'sum'), got '{reduce}' instead.")
+
+        if decimals is None:
+            return vals
+        else:
+            return np.round(vals, decimals)
+
+
     def stack(self):
         self.stacked = True
         for key in self.keys():
-            self[key] = th.stack(tuple(self[key]))
+            self[key] = self.stacked_key(key)
 
     def clear(self) -> None:
         self.stacked = False

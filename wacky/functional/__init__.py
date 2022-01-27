@@ -7,3 +7,4 @@ from wacky.functional.memory import *
 from wacky.functional.network_constructors import *
 from wacky.functional.scores import *
 from wacky.functional.funcs import *
+from wacky.functional.interpolations import *

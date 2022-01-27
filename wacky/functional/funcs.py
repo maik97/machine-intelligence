@@ -68,16 +68,21 @@ class ValueTracer:
         self.sum_arrs = np.append(self.sum_arrs, sum_arr)
         return sum_arr
 
-    def mean_of_sums(self, clear=True):
-        print()
+    def reduce_mean(self, clear=True, decimals=None):
         mean_sum_arrs = np.mean(self.sum_arrs)
         if clear:
             self.clear()
-        return mean_sum_arrs
+        if decimals is None:
+            return mean_sum_arrs
+        else:
+            return np.round(mean_sum_arrs, decimals)
 
-    def sum_of_means(self, clear=True):
+    def reduce_sum(self, clear=True, decimals=None):
         sum_mean_arrs = np.sum(self.mean_arrs)
         if clear:
             self.clear()
-        return sum_mean_arrs
+        if decimals is None:
+            return sum_mean_arrs
+        else:
+            return np.round(sum_mean_arrs, decimals)
 
