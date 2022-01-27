@@ -17,16 +17,14 @@ class EpsilonGreedyBase(funky.WackyBase):
     def step(self):
         pass
 
-    def call(self, network, state, deterministic=False, epsilon_step=True):
+    def call(self, network, state, deterministic=False):
         if not deterministic:
-            if epsilon_step:
-                self.step()
             deterministic = np.random.random() > self.eps
 
         if deterministic:
-            return np.argmax(network(state).detach().numpy())
+            return int(np.argmax(network(state).detach().numpy()))
         else:
-            return self.action_space.sample()
+            return int(self.action_space.sample())
 
 
 class DiscountingEpsilonGreedy(EpsilonGreedyBase):
@@ -46,6 +44,7 @@ class InterpolationEpsilonGreedy(EpsilonGreedyBase):
     def __init__(
             self,
             action_space,
+            num_steps,
             eps_interpolation: str = 'linear',
             eps_init: float = 1.0,
             eps_min: float = 0.1,
@@ -54,7 +53,7 @@ class InterpolationEpsilonGreedy(EpsilonGreedyBase):
     ):
         super(InterpolationEpsilonGreedy, self).__init__(action_space, eps_init)
 
-        self.interpolation = funky.get_ramp_interpolator(
+        self.interpolation = funky.RampInterpolator(
             val_a=eps_init,
             val_b=eps_min,
             point_a=ramp_point_a,
@@ -62,13 +61,8 @@ class InterpolationEpsilonGreedy(EpsilonGreedyBase):
             kind=eps_interpolation,
         )
         self.eps_min = eps_min
+        self.counter = funky.ThresholdCounter(num_steps)
 
-    def step(self, point):
-        self.eps = self.interpolation(point)
-
-    def call(self, network, state, deterministic=False, epsilon_step=True, point=None):
-        if epsilon_step and not deterministic and point is not None:
-            self.step(point)
-        return super().call(network, state, deterministic=deterministic, epsilon_step=False)
-
-
+    def step(self):
+        self.counter.count_up()
+        self.eps = self.interpolation(self.counter.progress())

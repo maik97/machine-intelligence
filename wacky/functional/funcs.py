@@ -15,11 +15,17 @@ class ThresholdCounter:
 
     def __call__(self, amount=1):
         self.count_up(amount)
+        return self.check()
+
+    def check(self):
         if self.count >= self.threshold:
             self.reset()
             return True
         else:
             return False
+
+    def progress(self):
+        return self.count / self.threshold
 
     def reset(self):
         self.count = self.init_val
@@ -38,6 +44,7 @@ class ThresholdCounter:
 class ValueTracer:
 
     def __init__(self):
+        self.reset()
         self.clear()
 
     def __call__(self, val):
@@ -47,7 +54,7 @@ class ValueTracer:
         self.arr = np.array([])
 
     def clear(self):
-        self.reset()
+        #self.reset()
         self.mean_arrs  = np.array([])
         self.sum_arrs  = np.array([])
 

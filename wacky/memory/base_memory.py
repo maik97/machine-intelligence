@@ -122,7 +122,6 @@ class MemoryDict(UserDict):
         else:
             return np.round(vals, decimals)
 
-
     def stack(self):
         self.stacked = True
         for key in self.keys():
@@ -131,6 +130,23 @@ class MemoryDict(UserDict):
     def clear(self) -> None:
         self.stacked = False
         super(MemoryDict, self).clear()
+
+    def sample(self, batch_size=32, num_batches=1, copy_dict=True):
+        mem = self.copy() if copy_dict else self
+        mem.stack()
+
+        if mem.global_keys_len is None:
+            raise Exception("Lengths of keys not equal:", str(mem.keys_len_dict))
+
+        samples = []
+        for i in range(num_batches):
+            rand_idx = np.random.randint(0, int(mem.global_keys_len - batch_size))
+            sub_mem = MemoryDict()
+            sub_mem.stacked = True
+            for key in mem.keys():
+                sub_mem[key] = mem[key][rand_idx:rand_idx+batch_size]
+            samples.append(sub_mem)
+        return samples
 
     def batch(self, batch_size, shuffle=False):
         split_mem = self.split(batch_size, copy_dict=True)
@@ -148,7 +164,7 @@ class MemoryDict(UserDict):
             return sub_memories
 
         else:
-            raise Exception("Number of batches not equal:", str(split_mem.keys_len_dict))
+            raise Exception("Lengths of keys not equal:", str(split_mem.keys_len_dict))
 
     def split(self, split_size_or_sections, copy_dict=True):
         split_mem = self.copy() if copy_dict else self
