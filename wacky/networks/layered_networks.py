@@ -86,7 +86,7 @@ class MultiLayerPerceptron(nn.Module):
 
         super(MultiLayerPerceptron, self).__init__()
         backend.check_type(in_features, int, 'in_features')
-        backend.check_type(layer_units, (list, int), 'layer_units')
+        backend.check_type(layer_units, (list, int), 'layer_units', allow_none=True)
         #backend.check_type(activation_hidden, function, 'activation_hidden', allow_none=True)
         #backend.check_type(activation_out, list, 'activation_out', allow_none=True)
 
@@ -124,3 +124,30 @@ class MultiLayerPerceptron(nn.Module):
         self.layers.append(new_layer)
         if activation is not None:
             self.layers.append(activation)
+
+
+class DoubleNetworkWrapper:
+
+    def __init__(self, make_net_func, polyak=0.995, *args, **kwargs):
+
+        self.behavior = make_net_func(*args, **kwargs)
+        self.target = make_net_func(*args, **kwargs)
+        self.polyak = polyak
+
+    def __call__(self, x):
+        return self.behavior(x)
+
+    def __len__(self):
+        return len(self.behavior.layers)
+
+    def append_layer(self, *args, **kwargs):
+        self.behavior.append_layer(*args, **kwargs)
+        self.target.append_layer(*args, **kwargs)
+
+    def update_target_weights(self):
+        for target_param, behavior_param in zip(self.target.parameters(), self.behavior.parameters()):
+            target_param.data.copy_(self.polyak * behavior_param.data + (1.0 - self.polyak) * target_param.data)
+
+    def override_target(self):
+        for target_param, behavior_param in zip(self.target.parameters(), self.behavior.parameters()):
+            target_param.data.copy_(behavior_param.data)

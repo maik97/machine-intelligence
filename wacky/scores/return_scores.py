@@ -76,6 +76,54 @@ class MonteCarloReturns(BaseReturnCalculator):
         return self.rms_normalize_returns(returns)
 
 
+class TemporalDifferenceReturns(BaseReturnCalculator):
+
+    def __init__(self, gamma=0.99, eps=1e-07, standardize=False, *args, **kwargs):
+        super(TemporalDifferenceReturns, self).__init__(*args, **kwargs)
+
+        self.gamma = gamma
+        self.eps = eps
+        self.standardize = standardize
+
+    def call(self, memory):
+        returns = funky.temporal_difference_returns(
+            rewards=self.rms_normalize_rewards(memory['rewards']),
+            dones=memory['dones'],
+            values=memory['values'],
+            next_values=memory['next_values'],
+            gamma=self.gamma,
+            eps=self.eps,
+            standardize=self.standardize,
+        )
+        return self.rms_normalize_returns(returns)
+
+
+class NStepReturns(BaseReturnCalculator):
+
+    def __init__(self,n=20, gamma=0.99, lamda=1.0, eps=1e-07, standardize=False, *args, **kwargs):
+        super(NStepReturns, self).__init__(*args, **kwargs)
+
+        self.n = n
+        self.gamma = gamma
+        self.lamda = lamda
+        self.eps = eps
+        self.standardize = standardize
+
+    def call(self, memory):
+        returns = funky.n_step_returns(
+            rewards=self.rms_normalize_rewards(memory['rewards']),
+            dones=memory['dones'],
+            values=memory['values'],
+            next_values=memory['next_values'],
+            n=self.n,
+            gamma=self.gamma,
+            lamda=self.lamda,
+            eps=self.eps,
+            standardize=self.standardize,
+        )
+        return self.rms_normalize_returns(returns)
+
+
 class GeneralizedReturns(BaseReturnCalculator):
 
     def __init__(self, gamma=0.99, lamda=0.95, eps=1e-07, standardize=False, *args, **kwargs):

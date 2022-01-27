@@ -32,24 +32,6 @@ def temporal_difference_returns(rewards, dones, values, next_values, gamma=0.99,
     return th.unsqueeze(returns, dim=-1)
 
 
-def generalized_returns(rewards, dones, values, next_values, gamma=0.99, lamda=0.95, eps=1e-07, standardize=False):
-
-    g = 0.0
-    returns = []
-    for i in reversed(range(len(rewards))):
-        delta = rewards[i] + gamma * next_values[i] * dones[i] - values[i]
-        g = delta + gamma * lamda * (1-int(dones[i])) * g
-        future_return = g + values[i]
-        returns.insert(0, future_return)
-
-    returns = th.tensor(returns)
-
-    if standardize:
-        returns = funky.standardize_tensor(returns, eps)
-
-    return th.unsqueeze(returns, dim=-1)
-
-
 def n_step_returns(rewards, dones, values, next_values, n=16, gamma=0.99, lamda=1.0, eps=1e-07, standardize=False):
 
     returns = []
@@ -63,6 +45,24 @@ def n_step_returns(rewards, dones, values, next_values, n=16, gamma=0.99, lamda=
             g = delta + gamma * lamda * (1-int(dones[i+j])) * g
 
         returns.append(g + values[i])
+
+    returns = th.tensor(returns)
+
+    if standardize:
+        returns = funky.standardize_tensor(returns, eps)
+
+    return th.unsqueeze(returns, dim=-1)
+
+
+def generalized_returns(rewards, dones, values, next_values, gamma=0.99, lamda=0.95, eps=1e-07, standardize=False):
+
+    g = 0.0
+    returns = []
+    for i in reversed(range(len(rewards))):
+        delta = rewards[i] + gamma * next_values[i] * dones[i] - values[i]
+        g = delta + gamma * lamda * (1-int(dones[i])) * g
+        future_return = g + values[i]
+        returns.insert(0, future_return)
 
     returns = th.tensor(returns)
 

@@ -10,6 +10,58 @@ from wacky.functional.gym_space_decoder import decode_gym_space
 from wacky.functional.distributions import make_distribution_network
 from wacky.backend.error_messages import check_type, raise_type_error
 
+from wacky import functional as funky
+
+def maybe_make_network(network, in_features=None, activation=None, *args, **kwargs):
+
+    if network is None:
+        network = [64, 64]
+
+    elif isinstance(network, int):
+        network = [network]
+
+    if isinstance(in_features, spaces.Space):
+        in_features = funky.decode_gym_space(in_features)[0]
+        print(in_features)
+
+    if isinstance(network, list):
+
+        if in_features is None and len(network) >= 2:
+            in_features = network.pop(0)
+            print("Warning - Using first first element of network layer list as in_features:", in_features,
+                  "\nReduced layer list:", network)
+
+        elif in_features is None:
+            raise AttributeError("List 'network' has len 1. When defining network as list,\n"
+                                 "either define in_features or include in list as the first element.")
+
+        if not isinstance(activation, list):
+            activation = [activation] * len(network)
+
+        network_module = MultiLayerPerceptron(in_features=in_features)
+        for units, activ in zip(network, activation):
+            network_module.append_layer(units, activ, *args, **kwargs)
+
+    elif isinstance(network, nn.Module):
+        network_module = network
+
+    else:
+        raise_type_error(network, (None, int, list, nn.Module), 'network')
+
+    return network_module
+
+
+def make_q_net(in_features, out_features, q_net=None, hidden_activ=th.nn.ReLU(), out_activ=None, *args, **kwargs):
+    q_net_module = maybe_make_network(q_net, in_features, hidden_activ, *args, **kwargs)
+    if isinstance(out_features, int):
+        n_units = out_features
+    elif isinstance(out_features, spaces.Space):
+        n_units = funky.decode_gym_space(out_features, allowed_spaces=[spaces.Discrete])
+    else:
+        raise_type_error(out_features, (int, spaces.Space), 'out_features')
+    q_net_module.append_layer(n_units, out_activ, module=nn.Linear)
+    return q_net_module
+
 
 def make_shared_net_for_actor_critic(observation_space, shared_net, activation_shared):
     if shared_net is None:
