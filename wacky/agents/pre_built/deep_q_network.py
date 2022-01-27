@@ -20,13 +20,15 @@ class DoubleDQN(BootstrappingLearner):
             network=None,
             polyak=0.995,
             optimizer: str = 'Adam',
-            lr: float = 0.0007,
+            lr: float = 0.0001,
+            buffer_size=20_000,
             eps_init: float = 1.0,
-            eps_discount: float = 0.9995,
-            eps_min: float = 0.1,
+            eps_discount: float = 0.999995,
+            eps_min: float = 0.01,
             returns_type = 'TD',
             returns_gamma: float = 0.99,
             batch_size=64,
+            epochs=1,
             *args, **kwargs
     ):
 
@@ -40,7 +42,7 @@ class DoubleDQN(BootstrappingLearner):
 
         super(DoubleDQN, self).__init__(self.network, optimizer, lr, *args, **kwargs)
 
-        self.memory = MemoryDict()
+        self.memory = MemoryDict().set_maxlen(buffer_size)
         self.reset_memory = True
 
         self.epsilon_greedy = DiscountingEpsilonGreedy(
@@ -58,6 +60,7 @@ class DoubleDQN(BootstrappingLearner):
         self.loss_fn = ValueLossWrapper(th.nn.SmoothL1Loss())
 
         self.batch_size = batch_size
+        self.epochs = epochs
 
     def call(self, state, deterministic=False, remember=True):
         action = self.epsilon_greedy(self.network.behavior, state, deterministic)
@@ -67,9 +70,8 @@ class DoubleDQN(BootstrappingLearner):
         return action
 
     def reset(self):
-        self.memory.clear()
-
-
+        pass
+        #self.memory.clear()
 
     def q_for_state_action_pair(self, batch):
         values = th.squeeze(self.network.behavior(batch['states']))
@@ -84,18 +86,18 @@ class DoubleDQN(BootstrappingLearner):
 
     def learn(self):
 
-        #self.memory.stack()
-        for batch in self.memory.batch(self.batch_size):
+        for epoch in range(self.epochs):
+            for batch in self.memory.batch(self.batch_size):
 
-            batch['values'] = self.q_for_state_action_pair(batch)
-            batch['next_values'] = self.max_q_next_states(batch)
+                batch['values'] = self.q_for_state_action_pair(batch)
+                batch['next_values'] = self.max_q_next_states(batch)
 
-            batch['returns'] = self.calc_returns(batch)
-            loss = self.loss_fn(batch)
+                batch['returns'] = self.calc_returns(batch)
+                loss = self.loss_fn(batch)
 
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()
 
         self.network.update_target_weights()
 
@@ -115,6 +117,7 @@ class DoubleDQN(BootstrappingLearner):
             if isinstance(action, th.Tensor):
                 action = action.detach()[0].numpy()
             state, reward, done, _ = env.step(action)
+            reward -= int(done)
 
             self.memory['next_states'].append(np.squeeze(state))
             self.memory['rewards'].append(reward)
@@ -133,8 +136,6 @@ class DoubleDQN(BootstrappingLearner):
                 )
                 self.reset()
                 #self.test(env, 1)
-
-
 
 
 def main():

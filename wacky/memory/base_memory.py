@@ -1,5 +1,6 @@
 from collections import UserDict, UserList
 from collections.abc import Iterable
+import random
 import torch as th
 import numpy as np
 from wacky import functional as funky
@@ -131,7 +132,7 @@ class MemoryDict(UserDict):
         self.stacked = False
         super(MemoryDict, self).clear()
 
-    def batch(self, batch_size):
+    def batch(self, batch_size, shuffle=False):
         split_mem = self.split(batch_size, copy_dict=True)
 
         if split_mem.global_keys_len is not None:
@@ -142,6 +143,8 @@ class MemoryDict(UserDict):
                 for key in split_mem.keys():
                     sub_mem[key] = split_mem[key][idx]
                 sub_memories.append(sub_mem)
+            if shuffle:
+                random.shuffle(sub_memories)
             return sub_memories
 
         else:

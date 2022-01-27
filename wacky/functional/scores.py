@@ -35,10 +35,9 @@ def temporal_difference_returns(rewards, dones, values, next_values, gamma=0.99,
 def n_step_returns(rewards, dones, values, next_values, n=16, gamma=0.99, lamda=1.0, eps=1e-07, standardize=False):
 
     returns = []
-
     for i in range(len(rewards)):
         g = 0.0
-        future_rewards = rewards[i:i+n] if len(rewards) > i+n else rewards[i:]
+        future_rewards = rewards[i:int(i+n)] if len(rewards) > i+n else rewards[i:]
 
         for j in reversed(range(len(future_rewards))):
             delta = future_rewards[j] + gamma * next_values[i+j] * dones[i+j] - values[i+j]
