@@ -1,6 +1,5 @@
 import torch as th
 import torch.nn as nn
-import torch.nn.functional as F
 
 from gym import spaces
 
@@ -8,9 +7,10 @@ from wacky.networks.layered_networks import MultiLayerPerceptron
 from wacky.networks.actor_critic_networks import ActorCriticNetwork, DuellingQNetwork
 from wacky.functional.gym_space_decoder import decode_gym_space
 from wacky.functional.distributions import make_distribution_network
-from wacky.backend.error_messages import check_type, raise_type_error
+from wacky.backend import WackyTypeError
 
 from wacky import functional as funky
+
 
 def maybe_make_network(network, in_features=None, activation=None, *args, **kwargs):
 
@@ -31,8 +31,8 @@ def maybe_make_network(network, in_features=None, activation=None, *args, **kwar
                   "\nReduced layer list:", network)
 
         elif in_features is None:
-            raise AttributeError("List 'network' has len 1. When defining network as list,\n"
-                                 "either define in_features or include in list as the first element.")
+            raise ValueError("List 'network' has len 1. When defining network as list,\n"
+                             "either define in_features or include in list as the first element.")
 
         if not isinstance(activation, list):
             activation = [activation] * len(network)
@@ -45,21 +45,24 @@ def maybe_make_network(network, in_features=None, activation=None, *args, **kwar
         network_module = network
 
     else:
-        raise_type_error(network, (None, int, list, nn.Module), 'network')
+        raise WackyTypeError(network, (int, list, nn.Module), parameter='network', optional=True)
 
     return network_module
 
 
 def make_q_net(in_features, out_features, net=None, hidden_activ=th.nn.ReLU(), out_activ=None, *args, **kwargs):
     q_net_module = maybe_make_network(net, in_features, hidden_activ, *args, **kwargs)
+
     if isinstance(out_features, int):
         n_units = out_features
     elif isinstance(out_features, spaces.Space):
         n_units = funky.decode_gym_space(out_features, allowed_spaces=[spaces.Discrete])
     else:
-        raise_type_error(out_features, (int, spaces.Space), 'out_features')
+        raise WackyTypeError(out_features, (int, spaces.Space), parameter='out_features', optional=False)
+
     q_net_module.append_layer(n_units, out_activ, module=nn.Linear)
     return q_net_module
+
 
 def make_duelling_q_net(
         in_features,
@@ -87,10 +90,12 @@ def make_duelling_q_net(
     elif isinstance(out_features, spaces.Space):
         units = funky.decode_gym_space(out_features, allowed_spaces=[spaces.Discrete])
     else:
-        raise_type_error(out_features, (int, spaces.Space), 'out_features')
+        raise WackyTypeError(out_features, (int, spaces.Space), parameter='out_features', optional=False)
+
     value_module.append_layer(units, out_activ)
 
     return DuellingQNetwork(value_module, adv_module, shared_module)
+
 
 def make_shared_net_for_actor_critic(observation_space, shared_net, activation_shared):
     if shared_net is None:
@@ -133,7 +138,7 @@ def make_actor_net(action_space, in_features, actor_net=None, activation_actor=t
     elif isinstance(actor_net, nn.Module):
         actor_net_module = actor_net
     else:
-        raise_type_error(actor_net, (None, list, nn.Module), 'actor_net')
+        raise WackyTypeError(actor_net, (list, nn.Module), parameter='actor_net', optional=True)
 
     action_layer = make_distribution_network(in_features=actor_net_module.out_features, space=action_space)
     actor_net_module.layers.append(action_layer)
@@ -155,7 +160,7 @@ def make_critic_net(in_features, critic_net, activation_critic):
     elif isinstance(critic_net, nn.Module):
         critic_net_module = critic_net
     else:
-        raise_type_error(critic_net, (None, list, nn.Module), 'critic_net')
+        raise WackyTypeError(critic_net, (list, nn.Module), parameter='critic_net', optional=True)
 
     critic_net_module.append_layer(1, activation=None)
 

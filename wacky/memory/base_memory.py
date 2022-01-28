@@ -3,7 +3,7 @@ from collections.abc import Iterable
 import random
 import torch as th
 import numpy as np
-from wacky import functional as funky
+from wacky.backend import WackyTypeError
 
 
 def all_equal(iterable):
@@ -115,7 +115,7 @@ class MemoryDict(UserDict):
             elif reduce == 'sum':
                 vals = np.sum(vals)
             else:
-                raise ValueError(f"Expected 'reduce' to be (None, 'mean', 'sum'), got '{reduce}' instead.")
+                raise WackyTypeError(reduce, ('mean', 'sum'), parameter='reduce', optional=True)
 
         if decimals is None:
             return vals

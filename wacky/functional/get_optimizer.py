@@ -1,4 +1,6 @@
 from torch import optim
+from wacky.backend import WackyValueError
+
 
 def get_optim(name, params, lr, *args, **kwargs):
 
@@ -29,4 +31,10 @@ def get_optim(name, params, lr, *args, **kwargs):
     elif name == 'SGD':
         return optim.SGD(params, lr, *args, **kwargs)
     else:
-        raise ValueError("Optimizer not found:", name)
+        raise WackyValueError(
+            name,
+            ('Adadelta', 'Adagrad', 'Adam', 'AdamW', 'SparseAdam', 'Adamax',
+             'ASGD', 'LBFGS', 'NAdam', 'RAdam', 'RMSprop', 'Rprop', 'SGD'),
+            parameter='name',
+            optional=False
+        )

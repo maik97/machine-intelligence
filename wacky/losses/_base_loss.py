@@ -1,6 +1,9 @@
+from abc import ABC
+
 import torch as th
 from wacky import functional as funky
-from wacky import backend
+from wacky.backend import WackyValueError
+
 
 def scale_on_call(scale_factor, x):
     return scale_factor * x
@@ -14,7 +17,7 @@ def scale_and_reduce_sum_on_call(scale_factor, x):
     return scale_factor * th.sum(x)
 
 
-class BaseWackyLoss(funky.MemoryBasedFunctional):
+class BaseWackyLoss(funky.MemoryBasedFunctional, ABC):
 
     def __init__(self, scale_factor=1.0, wacky_reduce=None, *args, **kwargs):
         super(BaseWackyLoss, self).__init__(*args, **kwargs)
@@ -27,7 +30,7 @@ class BaseWackyLoss(funky.MemoryBasedFunctional):
         elif wacky_reduce == 'sum':
             self.on_call = scale_and_reduce_sum_on_call
         else:
-            backend.raise_value_error()
+            raise WackyValueError(wacky_reduce, ('mean', 'sum'), parameter='wacky_reduce', optional=True)
 
     def __call__(self, *args, **kwargs) -> th.Tensor:
         return self.on_call(self.scale_factor, super(BaseWackyLoss, self).__call__(*args, **kwargs))

@@ -1,1 +1,2 @@
-from wacky.backend.error_messages import raise_type_error, check_type
+from wacky.backend.exceptions import *
+from wacky.backend.check_if_exception import *

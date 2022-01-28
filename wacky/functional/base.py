@@ -16,6 +16,7 @@ class WackyBase(metaclass=abc.ABCMeta):
     def call(self, *args, **kwargs):
         raise NotImplementedError()
 
+
 class MemoryBasedFunctional(WackyBase):
 
     def __init__(self, *args, **kwargs):
@@ -35,4 +36,3 @@ class MemoryBasedFunctional(WackyBase):
     @abc.abstractmethod
     def call(self, memory):
         raise NotImplementedError()
-

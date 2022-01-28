@@ -1,5 +1,6 @@
 import torch as th
 
+
 def basic_score_loss(score, log_prob):
     score = score.detach()
     return - (score * log_prob).sum()
