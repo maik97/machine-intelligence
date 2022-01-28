@@ -1,12 +1,10 @@
-from wacky import functional as funky
 from wacky import memory as mem
+from wacky.losses import BaseWackyLoss
 
-
-class ValueLossWrapper(funky.MemoryBasedFunctional):
-    def __init__(self, loss_fn, scale_factor=1.0):
-        super().__init__()
+class ValueLossWrapper(BaseWackyLoss):
+    def __init__(self, loss_fn, scale_factor=1.0, wacky_reduce='mean', *args, **kwargs):
+        super(ValueLossWrapper, self).__init__(scale_factor, wacky_reduce, *args, **kwargs)
         self.loss_fn = loss_fn
-        self.scale_factor = scale_factor
 
     def call(self, memory: [dict, mem.MemoryDict], *args, **kwargs):
-        return self.scale_factor * self.loss_fn(memory['returns'], memory['values'], *args, **kwargs).sum()
+        return self.loss_fn(memory['returns'], memory['values'], *args, **kwargs)

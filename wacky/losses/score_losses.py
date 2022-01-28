@@ -1,59 +1,62 @@
+import torch as th
 from wacky import functional as funky
 from wacky import memory as mem
+from wacky.losses import BaseWackyLoss
 
-class NoBaselineLoss(funky.MemoryBasedFunctional):
-    def __init__(self, scale_factor=1.0):
-        super().__init__()
-        self.scale_factor = scale_factor
 
-    def call(self, memory: [dict, mem.MemoryDict]):
-        return self.scale_factor * funky.basic_score_loss(
+class NoBaselineLoss(BaseWackyLoss):
+    def __init__(self, scale_factor=1.0, wacky_reduce='mean', *args, **kwargs):
+        super(NoBaselineLoss, self).__init__(scale_factor, wacky_reduce, *args, **kwargs)
+
+    def call(self, memory: [dict, mem.MemoryDict]) -> th.Tensor:
+        return funky.basic_score_loss(
             score=memory['returns'],
             log_prob=memory['log_prob'],
         )
 
-class WithBaselineLoss(funky.MemoryBasedFunctional):
-    def __init__(self, scale_factor=1.0, baseline=None):
-        super().__init__()
-        self.scale_factor = scale_factor
-        self.baseline_calc = baseline # TODO: Implement baseline functions
 
-    def call(self, memory: [dict, mem.MemoryDict]):
-        return self.scale_factor * funky.basic_score_loss(
+class WithBaselineLoss(BaseWackyLoss):
+    def __init__(self, baseline=None, scale_factor=1.0, wacky_reduce='mean', *args, **kwargs):
+        super(WithBaselineLoss, self).__init__(scale_factor, wacky_reduce, *args, **kwargs)
+        self.baseline_calc = baseline  # TODO: Implement baseline functions
+
+    def call(self, memory: [dict, mem.MemoryDict]) -> th.Tensor:
+        return funky.basic_score_loss(
             score=memory['baseline_returns'],
             log_prob=memory['log_prob'],
         )
 
-class AdvantageLoss(funky.MemoryBasedFunctional):
 
-    def __init__(self, scale_factor=1.0):
-        super().__init__()
-        self.scale_factor = scale_factor
+class AdvantageLoss(BaseWackyLoss):
 
-    def call(self, memory: [dict, mem.MemoryDict]):
-        return self.scale_factor * funky.basic_score_loss(
+    def __init__(self, scale_factor=1.0, wacky_reduce='mean', *args, **kwargs):
+        super(AdvantageLoss, self).__init__(scale_factor, wacky_reduce, *args, **kwargs)
+
+    def call(self, memory: [dict, mem.MemoryDict]) -> th.Tensor:
+        return funky.basic_score_loss(
             score=memory['advantage'],
             log_prob=memory['log_prob'],
         )
 
-class ClippedSurrogateLoss(funky.MemoryBasedFunctional):
 
-    def __init__(self, clip_range: float = 0.2):
+class ClippedSurrogateLoss(BaseWackyLoss):
+
+    def __init__(self, clip_range: float = 0.2, scale_factor=1.0, wacky_reduce='mean', *args, **kwargs):
         """
         Wrapper for wacky.functional.clipped_surrogate_loss() that uses a Dict or MemoryDict to look up arguments.
         Initializes all necessary function hyperparameters.
 
         :param clip_range: Hyperparameter for the clipped surrogate loss
         """
-        super().__init__()
+        super(ClippedSurrogateLoss, self).__init__(scale_factor, wacky_reduce, *args, **kwargs)
         self.clip_range = clip_range
 
-    def call(self, memory: [dict, mem.MemoryDict]):
+    def call(self, memory: [dict, mem.MemoryDict]) -> th.Tensor:
         """
         Calls wacky.functional.clipped_surrogate_loss()
 
         :param memory: Must have following keys: ['advantage', 'old_log_prob', 'log_prob']
-        :return: Returns of wacky.functional.clipped_surrogate_loss()
+        :return: policy_loss
         """
         return funky.clipped_surrogate_loss(
             advantage=memory['advantage'],
@@ -61,6 +64,3 @@ class ClippedSurrogateLoss(funky.MemoryBasedFunctional):
             log_prob=memory['log_prob'],
             clip_range=self.clip_range
         )
-
-
-

@@ -48,7 +48,6 @@ class PPO(ReinforcementLearnerArchitecture):
             self.memory['actions'].append(action[0].detach())
         return action
 
-
     def learn(self):
         loss_a = []
         loss_c = []
@@ -121,7 +120,6 @@ class PPO(ReinforcementLearnerArchitecture):
                       )
                 self.reset()
 
-
 def main():
     import gym
     from wacky import functional as funky
@@ -129,7 +127,8 @@ def main():
     env = gym.make('LunarLanderContinuous-v2')
     network = funky.actor_critic_net_arch(env.observation_space, env.action_space)
     agent = PPO(network)
-    agent.train(env, 100_000)
+    agent.train(env, 10_000_000)
+    wait = input('press enter')
     agent.test(env, 100)
 
 

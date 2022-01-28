@@ -6,7 +6,7 @@ from wacky import memory as mem
 
 class WackyBase(metaclass=abc.ABCMeta):
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         pass
 
     def __call__(self, *args, **kwargs):
@@ -18,12 +18,12 @@ class WackyBase(metaclass=abc.ABCMeta):
 
 class MemoryBasedFunctional(WackyBase):
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         """
         Wrapper for some functions from wacky.functional that uses a Dict or MemoryDict to look up arguments.
         Initializes all necessary function hyperparameters.
         """
-        super(MemoryBasedFunctional, self).__init__()
+        super(MemoryBasedFunctional, self).__init__(*args, **kwargs)
         self._check_type = True
 
     def __call__(self, memory: [dict, mem.MemoryDict]):
