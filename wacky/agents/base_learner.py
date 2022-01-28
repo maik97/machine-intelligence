@@ -2,7 +2,7 @@ import numpy as np
 import torch as th
 import wacky.functional as funky
 from wacky.functional.get_optimizer import get_optim
-from wacky.networks import DoubleNetworkWrapper
+from wacky.networks import OffPolicyNetworkWrapper
 
 class ReinforcementLearnerArchitecture(funky.WackyBase):
 
@@ -10,7 +10,7 @@ class ReinforcementLearnerArchitecture(funky.WackyBase):
         super(ReinforcementLearnerArchitecture, self).__init__()
 
         self.network = network
-        if isinstance(self.network, DoubleNetworkWrapper):
+        if isinstance(self.network, OffPolicyNetworkWrapper):
             self.optimizer = get_optim(optimizer, self.network.behavior.parameters(), lr, *args, **kwargs)
         else:
             self.optimizer = get_optim(optimizer, self.network.parameters(), lr, *args, **kwargs)

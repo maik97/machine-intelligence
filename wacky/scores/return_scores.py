@@ -100,12 +100,11 @@ class TemporalDifferenceReturns(BaseReturnCalculator):
 
 class NStepReturns(BaseReturnCalculator):
 
-    def __init__(self,n=20, gamma=0.99, lamda=1.0, eps=1e-07, standardize=False, *args, **kwargs):
+    def __init__(self, n=16, gamma=0.99, eps=1e-07, standardize=False, *args, **kwargs):
         super(NStepReturns, self).__init__(*args, **kwargs)
 
         self.n = n
         self.gamma = gamma
-        self.lamda = lamda
         self.eps = eps
         self.standardize = standardize
 
@@ -117,7 +116,6 @@ class NStepReturns(BaseReturnCalculator):
             next_values=memory['next_values'],
             n=self.n,
             gamma=self.gamma,
-            lamda=self.lamda,
             eps=self.eps,
             standardize=self.standardize,
         )

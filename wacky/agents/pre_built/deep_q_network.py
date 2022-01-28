@@ -3,10 +3,10 @@ import torch as th
 
 from wacky.agents import BootstrappingLearner
 from wacky.losses import ValueLossWrapper
-from wacky.scores import NStepReturns, TemporalDifferenceReturns
+from wacky.scores import NStepReturns, TemporalDifferenceReturns, GeneralizedReturns
 from wacky.memory import MemoryDict
 from wacky.exploration import DiscountingEpsilonGreedy, InterpolationEpsilonGreedy
-from wacky.networks import DoubleNetworkWrapper
+from wacky.networks import OffPolicyNetworkWrapper
 
 from wacky import functional as funky
 
@@ -23,20 +23,26 @@ class DQN(BootstrappingLearner):
             lr: float = 0.0001,
             buffer_size=1_000_000,
             greedy_explorer=None,
-            returns_type = 'TD',
-            returns_gamma: float = 0.99,
+            n_steps: int = 16,
+            gamma: float = 0.99,
             batch_size=32,
             epochs=1,
             double=True,
+            duelling=True,
             *args, **kwargs
     ):
 
-        self.network = DoubleNetworkWrapper(
-            make_net_func=funky.make_q_net,
+        if duelling:
+            make_net_func = funky.make_duelling_q_net
+        else:
+            make_net_func = funky.make_q_net
+
+        self.network = OffPolicyNetworkWrapper(
+            make_net_func=make_net_func,
             polyak=polyak,
             in_features=observations_space,
             out_features=action_space,
-            q_net=network
+            net=network
         )
 
         super(DQN, self).__init__(self.network, optimizer, lr, *args, **kwargs)
@@ -56,10 +62,10 @@ class DQN(BootstrappingLearner):
         else:
             self.greedy_explorer = greedy_explorer
 
-        if returns_type == 'TD':
-            self.calc_returns = TemporalDifferenceReturns(returns_gamma)
-        elif returns_type == 'N-Step':
-            self.calc_returns = NStepReturns(returns_gamma)
+        if n_steps == 1:
+            self.calc_returns = TemporalDifferenceReturns(gamma=gamma)
+        else:
+            self.calc_returns = NStepReturns(gamma=gamma, n=n_steps)
 
         self.loss_fn = ValueLossWrapper(th.nn.SmoothL1Loss())
 
@@ -134,14 +140,14 @@ class DQN(BootstrappingLearner):
               'epsilon:', np.round(self.greedy_explorer.eps, 3),
               )
 
-    def train(self, env, num_steps=None, train_interval=2_000, update_interval=10_000, render=False):
+    def train(self, env, num_steps=None, train_interval=1_000, update_interval=1_000, render=False):
 
         if num_steps is None:
             num_steps = self.num_steps
 
         done = True
         train_interval_counter = funky.ThresholdCounter(train_interval)
-        update_interval_counter = funky.ThresholdCounter(train_interval)
+        update_interval_counter = funky.ThresholdCounter(update_interval)
         episode_rewards = funky.ValueTracer()
         for t in range(num_steps):
 
@@ -159,16 +165,16 @@ class DQN(BootstrappingLearner):
             if render:
                 env.render()
 
-            update_interval_counter.count_up()
             if train_interval_counter():
                 self.learn()
-                print('steps:', t+1,
+
+            if update_interval_counter():
+                self.network.update_target_weights()
+                print('steps:', t + 1,
                       'rewards:', episode_rewards.reduce_mean(decimals=3),
                       'actions:', self.memory.numpy('actions', reduce='mean', decimals=3),
                       'epsilon:', np.round(self.greedy_explorer.eps, 3),
-                )
-                if update_interval_counter.check():
-                    self.network.update_target_weights()
+                      )
 
 
 def compare_sb3(env):
@@ -208,7 +214,7 @@ def main():
 
     tic_wacky = time.perf_counter()
     agent.warm_up(env, warm_up_steps)
-    agent.train(env, num_steps)
+    agent.train(env, num_steps, train_interval=1_000, update_interval=1_000)
     toc_wacky = time.perf_counter()
 
     #print(f"sb3_time: {toc_sb3 - tic_sb3:0.4f}")

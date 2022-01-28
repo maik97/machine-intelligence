@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from gym import spaces
 
 from wacky.networks.layered_networks import MultiLayerPerceptron
-from wacky.networks.actor_critic_networks import ActorCriticNetwork
+from wacky.networks.actor_critic_networks import ActorCriticNetwork, DuellingQNetwork
 from wacky.functional.gym_space_decoder import decode_gym_space
 from wacky.functional.distributions import make_distribution_network
 from wacky.backend.error_messages import check_type, raise_type_error
@@ -22,7 +22,6 @@ def maybe_make_network(network, in_features=None, activation=None, *args, **kwar
 
     if isinstance(in_features, spaces.Space):
         in_features = funky.decode_gym_space(in_features)[0]
-        print(in_features)
 
     if isinstance(network, list):
 
@@ -51,8 +50,8 @@ def maybe_make_network(network, in_features=None, activation=None, *args, **kwar
     return network_module
 
 
-def make_q_net(in_features, out_features, q_net=None, hidden_activ=th.nn.ReLU(), out_activ=None, *args, **kwargs):
-    q_net_module = maybe_make_network(q_net, in_features, hidden_activ, *args, **kwargs)
+def make_q_net(in_features, out_features, net=None, hidden_activ=th.nn.ReLU(), out_activ=None, *args, **kwargs):
+    q_net_module = maybe_make_network(net, in_features, hidden_activ, *args, **kwargs)
     if isinstance(out_features, int):
         n_units = out_features
     elif isinstance(out_features, spaces.Space):
@@ -62,6 +61,36 @@ def make_q_net(in_features, out_features, q_net=None, hidden_activ=th.nn.ReLU(),
     q_net_module.append_layer(n_units, out_activ, module=nn.Linear)
     return q_net_module
 
+def make_duelling_q_net(
+        in_features,
+        out_features,
+        net=None,
+        val_net=None,
+        adv_net=None,
+        hidden_activ=th.nn.ReLU(),
+        out_activ=None,
+        *args, **kwargs
+):
+    if val_net is None:
+        val_net = []
+
+    if adv_net is None:
+        adv_net = []
+
+    shared_module = maybe_make_network(net, in_features, hidden_activ, *args, **kwargs)
+    value_module = maybe_make_network(val_net, shared_module.out_features, hidden_activ)
+    adv_module = maybe_make_network(adv_net, shared_module.out_features, hidden_activ)
+    adv_module.append_layer(1, out_activ)
+
+    if isinstance(out_features, int):
+        units = out_features
+    elif isinstance(out_features, spaces.Space):
+        units = funky.decode_gym_space(out_features, allowed_spaces=[spaces.Discrete])
+    else:
+        raise_type_error(out_features, (int, spaces.Space), 'out_features')
+    value_module.append_layer(units, out_activ)
+
+    return DuellingQNetwork(value_module, adv_module, shared_module)
 
 def make_shared_net_for_actor_critic(observation_space, shared_net, activation_shared):
     if shared_net is None:

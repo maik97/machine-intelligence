@@ -19,4 +19,4 @@ def clipped_surrogate_loss(advantage, old_log_prob, log_prob, clip_range):
     policy_loss_2 = advantage * th.clamp(ratio, 1 - clip_range, 1 + clip_range)
     policy_loss = -th.min(policy_loss_1, policy_loss_2).mean()
 
-    return policy_loss, ratio
+    return policy_loss

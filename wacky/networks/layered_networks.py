@@ -126,7 +126,7 @@ class MultiLayerPerceptron(nn.Module):
             self.layers.append(activation)
 
 
-class DoubleNetworkWrapper:
+class OffPolicyNetworkWrapper:
 
     def __init__(self, make_net_func, polyak=0.995, *args, **kwargs):
 
