@@ -66,10 +66,10 @@ class ActorCriticNetwork(nn.Module):
         return self.critic_network(x)
 
     def eval_action(self, x, action):
-        '''if len(self.actor_net_module.layers) > 1:
+        """if len(self.actor_net_module.layers) > 1:
             for layer in self.actor_net_module.layers[:-2]:
                 x = layer(x)
-        log_prob = self.actor_net_module.layers[-1].eval_action(x, action)'''
+        log_prob = self.actor_net_module.layers[-1].eval_action(x, action)"""
 
         if self.shared_network is not None:
             x = self.shared_network(x)
@@ -81,7 +81,7 @@ class ActorCriticNetwork(nn.Module):
         return log_prob, val
 
 
-class ActorCriticConstructor:
+class ActorCriticNetworkConstructor:
 
     def __init__(
             self,
@@ -113,7 +113,7 @@ class ActorCriticConstructor:
             hidden_activation=hidden_activation
         )
 
-    def custom_critic(self, network, hidden_activation=nn.ReLU(), out_activation=None):
+    def custom_critic_network(self, network, hidden_activation=nn.ReLU(), out_activation=None):
         self.critic_network = funky.maybe_make_network(network, self.in_features, hidden_activation)
         self.critic_network.append_layer(1, activation=out_activation)
 
@@ -121,8 +121,8 @@ class ActorCriticConstructor:
         if self.shared_network is None and self.share_some:
             self.custom_shared_network([64, 64])
         if self.actor_network is None:
-            self.custom_shared_network([])
+            self.custom_actor_network([])
         if self.critic_network is None:
-            self.custom_shared_network([])
+            self.custom_critic_network([])
 
         return ActorCriticNetwork(self.actor_network, self.critic_network, self.shared_network)
