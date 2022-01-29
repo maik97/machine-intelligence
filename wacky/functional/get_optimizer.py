@@ -1,38 +1,69 @@
 from torch import optim
+from torch import nn
+
 from wacky.backend import WackyValueError
+from wacky.networks import OffPolicyNetworkWrapper
 
 
-def get_optim(name, params, lr, *args, **kwargs):
+def maybe_get_network_params(maybe_is_network):
+    '''
+    Calls parameter() method if argument is network.
 
-    if name == 'Adadelta':
+    :param maybe_is_network: Either nn.Module or module parameter iterator.
+    :return: Iterator over module parameters
+    '''
+    if isinstance(maybe_is_network, OffPolicyNetworkWrapper):
+        return maybe_is_network.behavior.parameters()
+    elif isinstance(maybe_is_network, nn.Module):
+        return maybe_is_network.parameters()
+    else:
+        return maybe_is_network
+
+
+def get_optim(optimizer, params, lr, *args, **kwargs):
+    """
+    Creates torch optimizer.
+
+    :param optimizer:
+    :param params:
+    :param lr:
+    :param args:
+    :param kwargs:
+    :return:
+    """
+
+    if isinstance(optimizer, optim.Optimizer):
+        return optimizer(params, lr, *args, **kwargs)
+
+    if optimizer == 'Adadelta':
         return optim.Adadelta(params, lr, *args, **kwargs)
-    elif name == 'Adagrad':
+    elif optimizer == 'Adagrad':
         return optim.Adagrad(params, lr, *args, **kwargs)
-    elif name == 'Adam':
+    elif optimizer == 'Adam':
         return optim.Adam(params, lr, *args, **kwargs)
-    elif name == 'AdamW':
+    elif optimizer == 'AdamW':
         return optim.AdamW(params, lr, *args, **kwargs)
-    elif name == 'SparseAdam':
+    elif optimizer == 'SparseAdam':
         return optim.SparseAdam(params, lr, *args, **kwargs)
-    elif name == 'Adamax':
+    elif optimizer == 'Adamax':
         return optim.Adamax(params, lr, *args, **kwargs)
-    elif name == 'ASGD':
+    elif optimizer == 'ASGD':
         return optim.ASGD(params, lr, *args, **kwargs)
-    elif name == 'LBFGS':
+    elif optimizer == 'LBFGS':
         return optim.LBFGS(params, lr, *args, **kwargs)
-    elif name == 'NAdam':
+    elif optimizer == 'NAdam':
         return optim.NAdam(params, lr, *args, **kwargs)
-    elif name == 'RAdam':
+    elif optimizer == 'RAdam':
         return optim.RAdam(params, lr, *args, **kwargs)
-    elif name == 'RMSprop':
+    elif optimizer == 'RMSprop':
         return optim.RMSprop(params, lr, *args, **kwargs)
-    elif name == 'Rprop':
+    elif optimizer == 'Rprop':
         return optim.Rprop(params, lr, *args, **kwargs)
-    elif name == 'SGD':
+    elif optimizer == 'SGD':
         return optim.SGD(params, lr, *args, **kwargs)
     else:
         raise WackyValueError(
-            name,
+            optimizer,
             ('Adadelta', 'Adagrad', 'Adam', 'AdamW', 'SparseAdam', 'Adamax',
              'ASGD', 'LBFGS', 'NAdam', 'RAdam', 'RMSprop', 'Rprop', 'SGD'),
             parameter='name',

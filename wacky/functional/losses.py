@@ -9,7 +9,7 @@ def basic_score_loss(score, log_prob):
 def clipped_surrogate_loss(advantage, old_log_prob, log_prob, clip_range):
 
     advantage = advantage.detach()
-    advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-8)
+    #advantage = (advantage - advantage.mean()) / (advantage.std() + 1e-8)
 
     # ratio between old and new policy, should be one at the first iteration
     old_log_prob = old_log_prob.detach()

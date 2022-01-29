@@ -2,9 +2,10 @@ import torch as th
 from torch import nn
 from torch.distributions import Normal, Categorical
 
+from wacky.modules import WackyModule
 
 
-class ContinuousDistributionModule(nn.Module):
+class ContinuousDistributionModule(WackyModule):
 
     def __init__(self, in_features, action_shape, activation_mu=None, activation_sigma=None):
         super(ContinuousDistributionModule, self).__init__()
@@ -34,7 +35,7 @@ class ContinuousDistributionModule(nn.Module):
         return log_prob
 
 
-class DiscreteDistributionModule(nn.Module):
+class DiscreteDistributionModule(WackyModule):
 
     def __init__(self, in_features, action_n, activation=None):
         super(DiscreteDistributionModule, self).__init__()
@@ -56,3 +57,37 @@ class DiscreteDistributionModule(nn.Module):
         distribution = self.make_dist(x)
         log_prob = distribution.log_prob(action)
         return log_prob
+
+
+class CategoricalAtomsModule(WackyModule):
+
+    def __init__(
+            self,
+            in_features,
+            action_n,
+            activation=None,
+            atom_size=51,
+            layer=nn.Linear,
+            v_min=-10.0,
+            v_max=10.0,
+            *args, **kwargs
+    ):
+        super(CategoricalAtomsModule, self).__init__()
+
+        self.atom_size = atom_size
+        self.action_n = action_n
+
+        self.in_features = in_features
+
+        self.layer = layer(in_features, (action_n * atom_size), *args, **kwargs)
+        self.activation = nn.Softmax(dim=-1) if activation is None else activation
+
+        self.support = th.linspace(v_min, v_max, self.atom_size)
+
+    def make_dist(self, x):
+        x = self.activation(self.layer(x)).view(-1, self.action_n, self.atom_size)
+        return x.clamp(min=1e-3)
+
+    def forward(self, x):
+        distribution = self.make_dist(x)
+        return th.sum(distribution * self.support, dim=2)
