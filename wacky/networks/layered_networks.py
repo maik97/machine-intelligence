@@ -28,7 +28,7 @@ class TemplateNetwork(nn.Module):
 """
 import torch.nn as nn
 from wacky import backend
-
+from wacky.networks import WackyNetwork
 
 class ParallelLayers(nn.Module):
 
@@ -72,7 +72,7 @@ class ParallelLayers(nn.Module):
         self.activations.append(activation)
 
 
-class MultiLayerPerceptron(nn.Module):
+class MultiLayerPerceptron(WackyNetwork):
 
     __constants__ = ['in_features', 'out_features']
 
@@ -115,7 +115,7 @@ class MultiLayerPerceptron(nn.Module):
 
     def forward(self, x):
         for layer in self.layers:
-            x = layer(x)
+            x = layer(x.float())
         return x
 
     def append_layer(self, units, activation, module=nn.Linear, *args, **kwargs):

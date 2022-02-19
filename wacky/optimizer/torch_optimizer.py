@@ -1,5 +1,6 @@
 from torch import optim
 from wacky import functional as funky
+from wacky.optimizer import WackyOptimizer
 
 
 class TorchOptimizer:
@@ -37,13 +38,16 @@ class TorchOptimizer:
         :param args: Additional Parameter passed to optimizer class
         :param kwargs: Additional Parameter passed to optimizer class
         """
+
         params = funky.maybe_get_network_params(network_parameter)
         self.th_optimizer = funky.get_optim(optimizer, params, lr, *args, **kwargs)
 
     def apply_loss(self, loss, set_to_none: bool = False, *args, **kwargs):
         self.zero_grad(set_to_none)
         loss.backward()
-        return self.step(*args, **kwargs)
+        loss =  self.step(*args, **kwargs)
+        return loss
+
 
     def state_dict(self):
         r"""Returns the state of the optimizer as a :class:`dict`.

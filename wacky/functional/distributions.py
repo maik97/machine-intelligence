@@ -1,10 +1,13 @@
+import wacky
 import numpy as np
 from gym import spaces
 from wacky import functional as funky
-from wacky import networks
 
 
 def make_distribution_network(in_features, space: spaces.Space):
+
+    if isinstance(in_features, spaces.Space):
+        in_features = funky.decode_gym_space(in_features)[0]
 
     # space.Dict, space.Tuple
     if isinstance(space, (spaces.Tuple, spaces.Dict)):
@@ -25,10 +28,10 @@ def make_distribution_network(in_features, space: spaces.Space):
             pass
     # space.Box
     elif isinstance(action_shape, tuple):
-        return networks.ContinuousDistributionModule(in_features, action_shape)
+        return wacky.modules.ContinuousDistributionModule(in_features, action_shape)
     # space.Discrete
     elif isinstance(action_shape, int):
-        return networks.DiscreteDistributionModule(in_features, action_shape)
+        return wacky.modules.DiscreteDistributionModule(in_features, action_shape)
     # space.MultiDiscrete
     elif isinstance(action_shape, np.ndarray):
-        return [networks.DiscreteDistributionModule(in_features, int(n)) for n in action_shape]
+        return [wacky.modules.DiscreteDistributionModule(in_features, int(n)) for n in action_shape]

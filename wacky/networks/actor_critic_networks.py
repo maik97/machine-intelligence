@@ -7,11 +7,11 @@ from wacky import functional as funky
 
 class ActorNetwork(WackyNetwork):
 
-    def __init__(self, action_space, in_features, network=None, hidden_activation=th.nn.ReLU()):
+    def __init__(self, action_space, network=None, in_features=None, hidden_activation=th.nn.ReLU()):
         super(ActorNetwork, self).__init__()
 
         if network is not None:
-            self.network = funky.maybe_make_network(in_features, network, hidden_activation)
+            self.network = funky.maybe_make_network(network, in_features, hidden_activation)
             self.action_layer = funky.make_distribution_network(
                 in_features=self.network.out_features,
                 space=action_space
@@ -35,6 +35,13 @@ class ActorNetwork(WackyNetwork):
 
     def eval_action(self, x, action):
         return self.action_layer.eval_action(x, action)
+
+    def learn(self, *args, **kwargs):
+        if self.network is not None:
+            self.network.learn(*args, **kwargs)
+
+    def reset(self):
+        self.network.reset()
 
 
 class ActorCriticNetwork(nn.Module):
@@ -80,6 +87,12 @@ class ActorCriticNetwork(nn.Module):
 
         return log_prob, val
 
+    def reset(self, *args, **kwargs):
+        if self.shared_network is not None:
+            self.shared_network.reset(*args, **kwargs)
+        self.actor_network.reset(*args, **kwargs)
+        self.critic_network.reset(*args, **kwargs)
+
 
 class ActorCriticNetworkConstructor:
 
@@ -87,10 +100,10 @@ class ActorCriticNetworkConstructor:
             self,
             observation_space,
             action_space,
-            share_some=True,
             shared_network=None,
             actor_network=None,
             critic_network=None,
+            share_some=True,
     ):
         self.observation_space = observation_space
         self.in_features = observation_space

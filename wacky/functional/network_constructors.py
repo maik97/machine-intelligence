@@ -4,7 +4,7 @@ import torch.nn as nn
 from gym import spaces
 
 from wacky.networks.layered_networks import MultiLayerPerceptron
-from wacky.networks.actor_critic_networks import ActorCriticNetwork, DuellingQNetwork
+from wacky.networks.actor_critic_networks import ActorCriticNetwork
 from wacky.functional.gym_space_decoder import decode_gym_space
 from wacky.functional.distributions import make_distribution_network
 from wacky.backend import WackyTypeError
