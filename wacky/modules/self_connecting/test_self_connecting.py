@@ -40,7 +40,7 @@ class SelfAssemblingEncodedWeights(WackyModule):
         )
 
         self.connector = WackyLayer(
-            in_features=n_dims * in_features + in_features,
+            in_features=n_dims,
             out_features=n_dims * out_features,
             module=nn.Linear,
             activation=nn.Sigmoid()
@@ -65,8 +65,8 @@ class SelfAssemblingEncodedWeights(WackyModule):
         important_mask = (important_relu > 0.0).float()
         print(important_mask)
 
-        incoming_connections = incoming_connections * important_mask.reshape(-1, 1)
-        x = x * important_softmax.reshape(-1, 1)
+        incoming_connections = incoming_connections * important_mask
+        x = x * important_softmax
         print()
         print(x)
         print(incoming_connections)
