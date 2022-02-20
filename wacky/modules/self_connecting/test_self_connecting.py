@@ -47,22 +47,32 @@ class SelfAssemblingEncodedWeights(WackyModule):
         )
 
         self.importance = WackyLayer(
-            in_features=n_dims * in_features,
-            out_features=in_features,
+            in_features=n_dims,
+            out_features=1,
             module=nn.Linear,
-            activation=nn.Sigmoid()
         )
 
     def forward(self, x, incoming_connections):
+        print(x)
+        print(incoming_connections)
+        print()
+        important = self.importance(incoming_connections)
+        print(important)
+        important_relu = F.relu(important)
+        print(important_relu)
+        important_softmax = F.softmax(important_relu, dim=0)
+        print(important_softmax)
+        important_mask = (important_relu > 0.0).float()
+        print(important_mask)
 
-        important = self.importance(incoming_connections.reshape(1, -1))
-        important = F.softmax(important, dim=-1)
-        #incoming_connections = incoming_connections * important.reshape(-1, 1)
-        x = x * important
+        incoming_connections = incoming_connections * important_mask.reshape(-1, 1)
+        x = x * important_softmax.reshape(-1, 1)
+        print()
+        print(x)
+        print(incoming_connections)
+        exit()
 
-        connect = self.connector(
-            th.cat([incoming_connections.reshape(1, -1), important.reshape(1, -1)], dim=-1)
-        )
+        connect = self.connector(incoming_connections)
         connect = connect.reshape(-1, self.n_dims)
 
         weight = self.calc_weight(connect)
@@ -124,10 +134,11 @@ class SharedEncodedWeightsNetwork(WackyModule):
     def forward(self, x):
         in_connect = F.one_hot(th.arange(self.in_features), self.in_features).float()
         in_connect = self.in_feature_encoder(in_connect)
+        x = x.reshape(-1, 1)
 
         for layer in self.layers:
             _x, _in_connect = layer(x.float(), in_connect)
-            x = th.cat([x,_x], -1)
+            x = th.cat([x,_x], 0)
             in_connect = th.cat([in_connect, _in_connect], 0)
         return _x
 
@@ -161,6 +172,7 @@ def main():
     agent = REINFORCE(network, optimizer, returns_calc=MonteCarloReturns())
     agent.train(env, 10_500)
     agent.test(env, 100)
+
 
 if __name__ == '__main__':
     main()
