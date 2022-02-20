@@ -9,7 +9,7 @@ class WackyModule(nn.Module):
 
 class WackyLayer(WackyModule):
 
-    def __init__(self, in_features, out_features, module=None, activation=None):
+    def __init__(self, in_features, out_features, module=None, activation=None, *args, **kwargs):
         super(WackyLayer, self).__init__()
 
         self.in_features = in_features
@@ -17,7 +17,9 @@ class WackyLayer(WackyModule):
 
         if module is None:
             module = nn.Linear
-        self.module = module(in_features, out_features)
+        print(in_features)
+        print(out_features)
+        self.module = module(in_features, out_features, *args, **kwargs)
         self.activation = activation
 
     def forward(self, x):

@@ -36,7 +36,10 @@ class VariableInFeaturesLayer(WackyModule):
 
     def forward(self, input: th.Tensor) -> th.Tensor:
         batch_size, in_features = input.size()
-        return F.linear(input, self.calc_weights(in_features))
+        y = F.linear(input, self.calc_weights(in_features))
+        if self.activation is not None:
+            y = self.activation(y)
+        return y
 
 
 class VariableOutFeaturesLayer(WackyModule):
