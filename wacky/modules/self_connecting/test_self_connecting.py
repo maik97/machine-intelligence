@@ -152,7 +152,6 @@ def main():
 
     in_features = funky.decode_gym_space(env.observation_space)[0]
     network = MultiLayerPerceptron(in_features=in_features)
-    #network.append_layer(64, nn.ReLU(), SharedEncodedWeightsNetwork)
     network.append_layer([32, 64, 32], None, SharedEncodedWeightsNetwork, hidden_activation=nn.ReLU())
 
     network = ActorNetwork(
@@ -168,29 +167,9 @@ def main():
     )
 
     agent = REINFORCE(network, optimizer, returns_calc=MonteCarloReturns())
-    agent.train(env, 2_000)
+    agent.train(env, 10_000)
     agent.test(env, 100)
 
 
 if __name__ == '__main__':
     main()
-
-
-
-'''exit()
-print()
-important = self.importance(incoming_connections)
-print(important)
-important_relu = F.relu(important)
-print(important_relu)
-important_softmax = F.softmax(important_relu, dim=0)
-print(important_softmax)
-important_mask = (important_relu > 0.0).float()
-print(important_mask)
-
-incoming_connections = incoming_connections * important_mask
-x = x * important_softmax
-print()
-print(x)
-print(incoming_connections)
-exit()'''
