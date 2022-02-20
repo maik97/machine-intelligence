@@ -28,7 +28,7 @@ class SelfAssemblingEncodedWeights(WackyModule):
             self.calc_weight = SharedWeightEncoder(
                 n_dims=n_dims,
                 out_features=16,
-                max_one_hot=256,
+                max_one_hot=512,
                 activation=nn.Tanh()
             )
         else:
