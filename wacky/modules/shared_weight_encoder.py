@@ -22,12 +22,22 @@ class SharedWeightEncoder(WackyModule):
             activation=nn.Sigmoid()
         )
 
-        self.hidden_net = WackyLayer(
+        self.layers = nn.ModuleList()
+        self.layers.append(WackyLayer(
             in_features=n_dims,
             out_features=out_features,
             module=nn.Linear,
             activation=activation
-        )
+        ))
+
+    def append(self, units, activation=nn.Tanh()):
+        self.layers.append(WackyLayer(
+            in_features=self.out_features,
+            out_features=units,
+            module=nn.Linear,
+            activation=activation
+        ))
+        self.out_features = units
 
     def one_hot(self, int_val):
         one_hot_ins = F.one_hot(th.arange(int_val), self.max_one_hot).float()
@@ -36,4 +46,6 @@ class SharedWeightEncoder(WackyModule):
     def forward(self, x):
         if isinstance(x, int):
             x = self.one_hot(x)
-        return self.hidden_net(x)
+        for l in self.layers:
+            x = l(x)
+        return x
