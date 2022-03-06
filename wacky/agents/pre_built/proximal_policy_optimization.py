@@ -2,40 +2,86 @@ import torch as th
 import numpy as np
 
 from wacky.agents import ReinforcementLearnerArchitecture
-from wacky.losses import ClippedSurrogateLoss, ValueLossWrapper
-from wacky.scores import GeneralizedAdvantageEstimation
+from wacky.losses import ClippedSurrogateLoss, ValueLossWrapper, BaseWackyLoss
+from wacky.scores import GeneralizedAdvantageEstimation, BaseReturnCalculator
 from wacky.memory import MemoryDict
 
 from wacky import functional as funky
+
+from wacky.networks import ActorCriticNetworkConstructor, WackyNetwork
+from wacky.optimizer import TorchOptimizer, WackyOptimizer
+
+from wacky.backend import WackyTypeError
+
+
+def make_PPO(
+        env,
+        network=None,
+        optimizer: str = 'Adam',
+        lr: float = 0.0003,
+        gamma: float = 0.99,
+        lamda:float = 0.95,
+        actor_loss_scale_factor: float = 1.0,
+        critic_loss_scale_factor: float = 0.5,
+        epochs: int = 10,
+        batch_size: int = 64,
+        *args, **kwargs
+):
+
+    if network is not None and not isinstance(network, (list, int)):
+        raise WackyTypeError(network, (list, int), parameter='network', optional=True)
+
+
+    network = ActorCriticNetworkConstructor(
+        observation_space=env.observation_space,
+        action_space=env.action_space,
+        shared_network=[64, 64] if network is None else network,
+    ).build()
+
+    print(network)
+
+    optimizer = TorchOptimizer(
+        optimizer=optimizer,
+        network_parameter=network,
+        lr=lr,
+    )
+
+    memory = MemoryDict()
+
+    returns_calc = GeneralizedAdvantageEstimation(gamma, lamda)
+
+    actor_loss_fn = ClippedSurrogateLoss(scale_factor=actor_loss_scale_factor)
+    critic_loss_fn = ValueLossWrapper(th.nn.SmoothL1Loss(), scale_factor=critic_loss_scale_factor)
+
+
+    return PPO(network, optimizer, memory, returns_calc, actor_loss_fn, critic_loss_fn, epochs, batch_size, *args, **kwargs)
 
 
 class PPO(ReinforcementLearnerArchitecture):
 
     def __init__(
             self,
-            network,
-            optimizer: str = 'Adam',
-            lr: float = 0.0003,
-            gamma: float = 0.99,
-            lamda:float = 0.95,
-            actor_loss_scale_factor: float = 1.0,
-            critic_loss_scale_factor: float = 0.5,
+            network: WackyNetwork,
+            optimizer: (TorchOptimizer, WackyOptimizer),
+            memory: MemoryDict = None,
+            returns_calc: GeneralizedAdvantageEstimation = None,
+            actor_loss_fn: BaseWackyLoss = None,
+            critic_loss_fn: BaseWackyLoss = None,
             epochs: int = 10,
             batch_size: int = 64,
             *args, **kwargs
     ):
-        super(PPO, self).__init__(network, optimizer, lr, *args, **kwargs)
+        super(PPO, self).__init__(*args, **kwargs)
 
         self.network = network
+        self.optimizer = optimizer
+        self.memory = MemoryDict() if memory is None else memory
+        self.returns_and_advantages = GeneralizedAdvantageEstimation() if returns_calc is None else returns_calc
+        self.actor_loss_fn = ClippedSurrogateLoss() if actor_loss_fn is None else actor_loss_fn
+        self.critic_loss_fn = ValueLossWrapper(th.nn.SmoothL1Loss()) if critic_loss_fn is None else critic_loss_fn
 
-        self.memory = MemoryDict()#.set_maxlen(20_000)
         self.remember_rewards = True
         self.reset_memory = True
-
-        self.returns_and_advantages = GeneralizedAdvantageEstimation(gamma, lamda)
-
-        self.actor_loss_fn = ClippedSurrogateLoss()
-        self.critic_loss_fn = ValueLossWrapper(th.nn.SmoothL1Loss(), critic_loss_scale_factor)
 
         self.epochs = epochs
         self.batch_size = batch_size
@@ -115,8 +161,8 @@ class PPO(ReinforcementLearnerArchitecture):
                 print('steps:', t + 1,
                       'rewards:', episode_rewards.reduce_mean(decimals=3),
                       'prob:', np.round(np.exp(self.memory.numpy('old_log_prob', reduce='mean')), 3),
-                      'actor_loss', np.round(loss_a, 4),
-                      'critic_loss', np.round(loss_c, 4),
+                      'actor_loss:', np.round(loss_a, 4),
+                      'critic_loss:', np.round(loss_c, 4),
                       )
                 self.reset()
 
@@ -125,9 +171,8 @@ def main():
     from wacky import functional as funky
     #env = gym.make('CartPole-v0')
     env = gym.make('LunarLanderContinuous-v2')
-    network = funky.actor_critic_net_arch(env.observation_space, env.action_space)
-    agent = PPO(network)
-    agent.train(env, 10_000_000)
+    agent = make_PPO(env)
+    agent.train(env, 10_000_000, True)
     wait = input('press enter')
     agent.test(env, 100)
 
