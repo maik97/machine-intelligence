@@ -43,7 +43,6 @@ class OverfitIt:
         #start_state, reward, done, _ = self.env.step(action.numpy())
         #self.agent.network.reset()
 
-
         start_state = self.env.reset()
         self.env.render()
 
@@ -71,7 +70,6 @@ class OverfitIt:
                   'probs:', np.round(th.exp(self.agent.memory['log_prob'].detach()).mean().numpy(), 4),
                   'loss:', np.round(loss.numpy(), 2),
                   )
-
 
 
 def main():
