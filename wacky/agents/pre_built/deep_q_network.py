@@ -1,17 +1,18 @@
 import numpy as np
 import torch as th
 
-from wacky.agents import BootstrappingLearner
+from wacky.agents import ReinforcementLearnerArchitecture
 from wacky.losses import ValueLossWrapper
 from wacky.scores import NStepReturns, TemporalDifferenceReturns, GeneralizedReturns
 from wacky.memory import MemoryDict
 from wacky.exploration import DiscountingEpsilonGreedy, InterpolationEpsilonGreedy
 from wacky.networks import OffPolicyNetworkWrapper
+from wacky.optimizer import TorchOptimizer
 
 from wacky import functional as funky
 
 
-class DQN(BootstrappingLearner):
+class DQN(ReinforcementLearnerArchitecture):
 
     def __init__(
             self,
@@ -31,6 +32,7 @@ class DQN(BootstrappingLearner):
             duelling=True,
             *args, **kwargs
     ):
+        super(DQN, self).__init__(*args, **kwargs)
 
         if duelling:
             make_net_func = funky.make_duelling_q_net
@@ -45,7 +47,11 @@ class DQN(BootstrappingLearner):
             net=network
         )
 
-        super(DQN, self).__init__(self.network, optimizer, lr, *args, **kwargs)
+        self.optimizer = TorchOptimizer(
+            optimizer=optimizer,
+            network_parameter=self.network,
+            lr=lr,
+        )
 
         self.network.override_target()
 

@@ -10,6 +10,7 @@ from wacky.functional.distributions import make_distribution_network
 from wacky.backend import WackyTypeError
 
 from wacky import functional as funky
+from wacky.networks.q_networks import DuellingQNetwork
 
 
 def maybe_make_network(network, in_features=None, activation=None, *args, **kwargs):
